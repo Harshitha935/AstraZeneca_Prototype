@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Play,
@@ -209,6 +209,33 @@ export function Frame7Intelligence({ onRestart, onNavigate }: Frame7Props) {
   const [selectedEntry, setSelectedEntry] = useState<TimelineEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showFullVideo, setShowFullVideo] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playProgress, setPlayProgress] = useState(0); // 0–100
+  const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isPlaying) {
+      playRef.current = setInterval(() => {
+        setPlayProgress(p => {
+          if (p >= 100) { setIsPlaying(false); return 100; }
+          return p + 0.28; // ~6 min simulated in ~60s real time
+        });
+      }, 170);
+    } else {
+      if (playRef.current) clearInterval(playRef.current);
+    }
+    return () => { if (playRef.current) clearInterval(playRef.current); };
+  }, [isPlaying]);
+
+  const handleVideoClose = () => { setShowFullVideo(false); setIsPlaying(false); setPlayProgress(0); };
+
+  const elapsed = Math.round((playProgress / 100) * 3480); // 58 min in seconds
+  const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  let activeChapter = -1;
+  for (let i = TIMELINE.length - 1; i >= 0; i--) {
+    const [m, sec] = TIMELINE[i].timestamp.split(":").map(Number);
+    if (m * 60 + sec <= elapsed) { activeChapter = i; break; }
+  }
 
   const filtered = TIMELINE.filter((e) => {
     const matchFilter = activeFilter === "All" || e.category === activeFilter;
@@ -237,7 +264,7 @@ export function Frame7Intelligence({ onRestart, onNavigate }: Frame7Props) {
                 Event Intelligence
               </span>
               <span className="text-xs text-gray-400">·</span>
-              <span className="text-xs text-gray-500">Processed by AZ Engage OS</span>
+              <span className="text-xs text-gray-500">Processed by AZ BridgeOS</span>
             </div>
             <h2 style={{ color: "#1D2B4F" }} className="mb-3 leading-snug">
               {WEBINAR_TITLE}
@@ -296,7 +323,7 @@ export function Frame7Intelligence({ onRestart, onNavigate }: Frame7Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowFullVideo(false)}
+            onClick={handleVideoClose}
           >
             <motion.div
               className="w-full max-w-3xl mx-6 rounded-2xl overflow-hidden shadow-2xl"
@@ -312,54 +339,105 @@ export function Frame7Intelligence({ onRestart, onNavigate }: Frame7Props) {
                   <div className="text-white text-sm">{WEBINAR_TITLE}</div>
                   <div className="text-white/50 text-xs mt-0.5">Prof. Alan Ashworth · UCSF · 58 min · May 2026</div>
                 </div>
-                <button onClick={() => setShowFullVideo(false)} className="text-white/40 hover:text-white/80 transition-colors">
+                <button onClick={handleVideoClose} className="text-white/40 hover:text-white/80 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Video Area */}
               <div className="relative" style={{ paddingBottom: "56.25%" }}>
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4"
+                  style={{ background: isPlaying ? "linear-gradient(135deg,#0f1729 0%,#1a1040 100%)" : undefined }}>
+
+                  {/* Playing chapter label */}
+                  {isPlaying && activeChapter >= 0 && (
+                    <motion.div
+                      key={activeChapter}
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute top-4 left-6 right-6 flex items-center gap-2"
+                    >
+                      <span className="text-[9px] font-mono text-[#830051] bg-[#830051]/10 px-1.5 py-0.5 rounded">
+                        {TIMELINE[activeChapter].timestamp}
+                      </span>
+                      <span className="text-[10px] text-white/60 truncate">
+                        {TIMELINE[activeChapter].topic}
+                      </span>
+                    </motion.div>
+                  )}
+
+                  {/* Play/Pause button */}
                   <motion.div
                     className="w-20 h-20 rounded-full border-2 border-white/20 flex items-center justify-center cursor-pointer"
                     style={{ background: "rgba(131,0,81,0.7)" }}
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.96 }}
+                    onClick={() => setIsPlaying(p => !p)}
                   >
-                    <Play className="w-9 h-9 text-white fill-white ml-1" />
+                    {isPlaying ? (
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-8 rounded-sm bg-white" />
+                        <div className="w-3 h-8 rounded-sm bg-white" />
+                      </div>
+                    ) : (
+                      <Play className="w-9 h-9 text-white fill-white ml-1" />
+                    )}
                   </motion.div>
-                  <div className="text-white/60 text-sm">Full webinar — 58:00</div>
+                  <div className="text-white/60 text-sm">
+                    {isPlaying ? "Now playing" : playProgress > 0 ? "Paused" : "Full webinar — 58:00"}
+                  </div>
+
+                  {/* Progress bar */}
                   <div className="absolute bottom-4 left-0 right-0 px-6">
-                    <div className="h-1 rounded-full bg-white/10">
-                      <div className="h-full w-0 rounded-full" style={{ background: "#830051" }}></div>
+                    <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ width: `${playProgress}%`, background: "#830051" }}
+                        transition={{ duration: 0.17, ease: "linear" }}
+                      />
                     </div>
                     <div className="flex items-center justify-between text-white/30 text-xs mt-1.5">
-                      <span>0:00</span>
+                      <span>{fmtTime(elapsed)}</span>
                       <span>58:00</span>
                     </div>
                   </div>
-                  <div className="absolute bottom-4 right-6 flex items-center gap-2">
-                    <div className="bg-red-600 text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                      REC
+
+                  {isPlaying && (
+                    <div className="absolute top-4 right-6 bg-red-600 text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                      <motion.div
+                        className="w-1.5 h-1.5 rounded-full bg-white"
+                        animate={{ opacity: [1, 0.2, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                      />
+                      LIVE
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               {/* Chapter List */}
               <div className="border-t border-white/10">
                 <div className="px-6 py-3 text-xs text-white/40 border-b border-white/10">Chapters</div>
-                {TIMELINE.map((entry) => (
+                {TIMELINE.map((entry, i) => (
                   <button
                     key={entry.id}
-                    className="w-full flex items-center gap-4 px-6 py-3 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0"
+                    onClick={() => {
+                      const [m, s] = entry.timestamp.split(":").map(Number);
+                      const pct = ((m * 60 + s) / 3480) * 100;
+                      setPlayProgress(pct);
+                      setIsPlaying(true);
+                    }}
+                    className={`w-full flex items-center gap-4 px-6 py-3 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0 ${i === activeChapter && isPlaying ? "bg-white/5" : ""}`}
                   >
                     <span className="text-xs font-mono w-10 flex-shrink-0" style={{ color: "#830051" }}>
                       {entry.timestamp}
                     </span>
-                    <span className="text-xs text-white/70 flex-1">{entry.topic}</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-white/20" />
+                    <span className={`text-xs flex-1 ${i === activeChapter && isPlaying ? "text-white" : "text-white/70"}`}>
+                      {entry.topic}
+                    </span>
+                    {i === activeChapter && isPlaying
+                      ? <motion.div className="w-1.5 h-1.5 rounded-full bg-[#830051]" animate={{ scale: [1, 1.5, 1] }} transition={{ duration: 1, repeat: Infinity }} />
+                      : <ChevronRight className="w-3.5 h-3.5 text-white/20" />}
                   </button>
                 ))}
               </div>

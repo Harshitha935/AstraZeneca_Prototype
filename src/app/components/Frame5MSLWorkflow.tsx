@@ -5,6 +5,7 @@ import { Bot, User, BookOpen, Lock, ArrowRight, Send, Play, ChevronRight, Chevro
 interface Frame5Props {
   query?: string;
   onNavigate: () => void;
+  onWebinar?: () => void;
 }
 
 const DDR_PAPERS = [
@@ -240,7 +241,7 @@ function DDRGraphSVG({ blockedPulse, showPapers }: { blockedPulse: boolean; show
   );
 }
 
-export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate }: Frame5Props) {
+export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate, onWebinar }: Frame5Props) {
   const [searching, setSearching]       = useState(true);
   const [showPapers, setShowPapers]     = useState(false);
   const [showClose, setShowClose]       = useState(false);
@@ -402,6 +403,16 @@ export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate }: Frame5
                             </div>
                           ))}
                         </div>
+                        {onWebinar && (
+                          <button
+                            onClick={onWebinar}
+                            className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-semibold text-white transition-opacity hover:opacity-90"
+                            style={{ backgroundColor: "#4F46E5" }}
+                          >
+                            <Play className="w-2.5 h-2.5 fill-white" />
+                            View Intelligence Analysis
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

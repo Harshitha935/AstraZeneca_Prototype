@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { FrameBackendLog } from "./components/FrameBackendLog";
+import { FramePatientPortal } from "./components/FramePatientPortal";
 import { Frame1SignalEntry } from "./components/Frame1SignalEntry";
+import { Frame1PortalLanding } from "./components/Frame1PortalLanding";
 import { Frame2MedicalAffairsPortal } from "./components/Frame2MedicalAffairsPortal";
 import { Frame3KnowledgeGraph } from "./components/Frame3KnowledgeGraph";
 import { Frame4GraphAccumulates } from "./components/Frame4GraphAccumulates";
@@ -7,6 +10,8 @@ import { Frame5MSLWorkflow } from "./components/Frame5MSLWorkflow";
 import { Frame6PatientSignal } from "./components/Frame6PatientSignal";
 import { Frame7Intelligence } from "./components/Frame7Intelligence";
 import { Frame8Analytics } from "./components/Frame8Analytics";
+import { Frame8HCPChat } from "./components/Frame8HCPChat";
+import type { PortalType } from "./components/Frame8HCPChat";
 import { Frame9Executive } from "./components/Frame9Executive";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -28,6 +33,8 @@ const FRAME_LABELS: Record<number, string> = {
 export default function App() {
   const [currentFrame, setCurrentFrame] = useState<Frame>(1);
   const [chatQuery, setChatQuery] = useState<string>("");
+  const [portalType, setPortalType] = useState<PortalType>("hcp");
+  const [showLog, setShowLog] = useState(false);
   const goTo = (frame: Frame, query?: string) => {
     if (query !== undefined) setChatQuery(query);
     setCurrentFrame(frame);
@@ -38,7 +45,7 @@ export default function App() {
       {/* ── Header ── */}
       <div className="border-b border-gray-200 px-5 py-2 bg-white flex items-center gap-4 flex-shrink-0">
         <div className="flex-shrink-0">
-          <h1 className="text-base leading-tight" style={{ color: "#830051" }}>AZ Engage OS</h1>
+          <h1 className="text-base leading-tight" style={{ color: "#830051" }}>AZ BridgeOS</h1>
           <p className="text-[9px] text-gray-400">Signal Flow Prototype</p>
         </div>
 
@@ -72,9 +79,57 @@ export default function App() {
           </svg>
         </button>
 
+        <div className="w-px h-7 bg-gray-200 flex-shrink-0" />
+
+        {/* Portal selector */}
+        <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 flex-shrink-0">
+          {(["open", "student", "patient", "hcp"] as PortalType[]).map((type) => (
+            <button
+              key={type}
+              onClick={() => setPortalType(type)}
+              className={`px-2.5 py-1 rounded-md text-[9px] font-medium transition-all ${
+                portalType === type
+                  ? "bg-white text-gray-800 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {type === "open" ? "Open" : type === "student" ? "Student" : type === "patient" ? "Patient" : "Registered HCP"}
+            </button>
+          ))}
+        </div>
+
+        {/* Portal variant badges */}
+        {portalType === "student" && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-teal-50 border border-teal-200 flex-shrink-0">
+            <span className="text-[8px] text-teal-700 font-medium">Student Version</span>
+          </div>
+        )}
+        {portalType === "patient" && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-sky-50 border border-sky-200 flex-shrink-0">
+            <span className="text-[8px] text-sky-700 font-medium">Patient Portal</span>
+          </div>
+        )}
+
+        {/* Log button */}
+        <button
+          onClick={() => setShowLog(true)}
+          className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 text-[9px] font-medium text-gray-500 hover:bg-gray-50 transition-all flex-shrink-0"
+        >
+          <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="1" width="12" height="12" rx="2" />
+            <path d="M4 4h6M4 7h6M4 10h3" />
+          </svg>
+          Log
+        </button>
+
         {/* Path indicator */}
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {currentFrame <= 4 ? (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {portalType === "patient" ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200">
+              <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+              <span className="text-[9px] text-sky-700 font-medium">Care team–approved resources</span>
+            </div>
+          ) : currentFrame <= 4 ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200">
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               <span className="text-[9px] text-purple-700 font-medium">Medical Affairs path</span>
@@ -103,11 +158,22 @@ export default function App() {
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           {currentFrame === 1 && (
-            <motion.div key="f1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
-              <Frame1SignalEntry
-                onMedicalAffairs={(query) => goTo(2, query)}
-                onChat={(query) => goTo(5, query)}
-              />
+            <motion.div key={`f1-${portalType}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
+              {portalType === "hcp" ? (
+                <Frame1SignalEntry
+                  onMedicalAffairs={(query) => goTo(2, query)}
+                  onChat={(query) => goTo(5, query)}
+                  portalType={portalType}
+                />
+              ) : portalType === "patient" ? (
+                <FramePatientPortal />
+              ) : (
+                <Frame1PortalLanding
+                  portalType={portalType}
+                  onChat={(query) => goTo(5, query)}
+                  onMedicalAffairs={(query) => goTo(2, query)}
+                />
+              )}
             </motion.div>
           )}
           {currentFrame === 2 && (
@@ -126,8 +192,14 @@ export default function App() {
             </motion.div>
           )}
           {currentFrame === 5 && (
-            <motion.div key="f5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
-              <Frame5MSLWorkflow query={chatQuery} onNavigate={() => goTo(6)} />
+            <motion.div key={`f5-${portalType}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
+              {portalType === "hcp" ? (
+                <Frame5MSLWorkflow query={chatQuery} onNavigate={() => goTo(6)} onWebinar={() => goTo(7)} />
+              ) : portalType === "patient" ? (
+                <FramePatientPortal />
+              ) : (
+                <Frame8HCPChat onNavigate={() => goTo(6)} portalType={portalType} />
+              )}
             </motion.div>
           )}
           {currentFrame === 6 && (
@@ -153,6 +225,11 @@ export default function App() {
         </AnimatePresence>
 
       </div>
+
+      {/* ── Backend log overlay ── */}
+      <AnimatePresence>
+        {showLog && <FrameBackendLog onClose={() => setShowLog(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

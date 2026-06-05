@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   MessageCircle, Clock, Phone, Folder, FileText, FileSpreadsheet,
   Image, Send, Bell, Calendar, Radio, Megaphone, Newspaper,
 } from "lucide-react";
 
+type PortalType = "open" | "student" | "hcp";
+
 interface Frame1Props {
   onMedicalAffairs: (query: string) => void;
   onChat: (query: string) => void;
+  portalType?: PortalType;
 }
 
 const desktopIcons = [
@@ -158,7 +161,7 @@ function NewsSection({
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export function Frame1SignalEntry({ onMedicalAffairs, onChat }: Frame1Props) {
+export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp" }: Frame1Props) {
   const [isChatOpen,      setIsChatOpen]      = useState(false);
   const [showResponse,    setShowResponse]    = useState(false);
   const [showMARedirect,  setShowMARedirect]  = useState(false);
@@ -166,6 +169,16 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat }: Frame1Props) {
   const [inputValue,      setInputValue]      = useState("What is DDR?");
   const [isDrawerOpen,    setIsDrawerOpen]    = useState(true);
   const [activeFilter,    setActiveFilter]    = useState<FilterType>("all");
+  const [clock, setClock] = useState(() =>
+    new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setClock(new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
+    }, 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleSendMessage = () => {
     if (inputValue.trim()) onChat(inputValue.trim());
@@ -197,34 +210,38 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat }: Frame1Props) {
             background: "radial-gradient(circle at 30% 50%, rgba(59,130,246,0.5) 0%, transparent 50%), radial-gradient(circle at 70% 50%, rgba(96,165,250,0.4) 0%, transparent 50%)",
           }} />
 
-          {/* Desktop Icons */}
-          <div className="absolute left-6 top-6 space-y-6">
-            {desktopIcons.map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <motion.div key={idx}
-                  className="flex flex-col items-center gap-1 cursor-pointer group w-20"
-                  initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}>
-                  <div className="w-12 h-12 flex items-center justify-center group-hover:bg-white/10 rounded transition-colors">
-                    <Icon className="w-10 h-10" style={{ color: item.color }} />
-                  </div>
-                  <span className="text-[10px] text-white text-center leading-tight drop-shadow-md">{item.label}</span>
-                </motion.div>
-              );
-            })}
-          </div>
+          {/* Desktop Icons — hidden for Student variant */}
+          {portalType !== "student" && (
+            <div className="absolute left-6 top-6 space-y-6">
+              {desktopIcons.map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <motion.div key={idx}
+                    className="flex flex-col items-center gap-1 cursor-pointer group w-20"
+                    initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}>
+                    <div className="w-12 h-12 flex items-center justify-center group-hover:bg-white/10 rounded transition-colors">
+                      <Icon className="w-10 h-10" style={{ color: item.color }} />
+                    </div>
+                    <span className="text-[10px] text-white text-center leading-tight drop-shadow-md">{item.label}</span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Taskbar */}
           <div className="absolute bottom-0 left-0 right-0 h-12 bg-white/10 backdrop-blur-xl border-t border-white/20 flex items-center justify-center px-4">
-            <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
-              <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center"><Folder className="w-5 h-5 text-white" /></div>
-              <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center"><FileText className="w-5 h-5 text-white" /></div>
-              <div className="w-8 h-8 rounded bg-green-600 flex items-center justify-center"><FileSpreadsheet className="w-5 h-5 text-white" /></div>
-              <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center"><Image className="w-5 h-5 text-white" /></div>
-            </div>
+            {portalType !== "student" && (
+              <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
+                <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center"><Folder className="w-5 h-5 text-white" /></div>
+                <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center"><FileText className="w-5 h-5 text-white" /></div>
+                <div className="w-8 h-8 rounded bg-green-600 flex items-center justify-center"><FileSpreadsheet className="w-5 h-5 text-white" /></div>
+                <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center"><Image className="w-5 h-5 text-white" /></div>
+              </div>
+            )}
             <div className="absolute right-4">
-              <span className="text-white/90 text-[10px]">14:32</span>
+              <span className="text-white/90 text-[10px]">{clock}</span>
             </div>
           </div>
 

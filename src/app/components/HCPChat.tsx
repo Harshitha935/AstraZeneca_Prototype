@@ -83,7 +83,7 @@ export function HCPChat() {
               <div className="px-6 py-4 border-b border-gray-200" style={{ backgroundColor: "var(--az-mulberry)" }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-white">AZ Engage OS</h3>
+                    <h3 className="text-white">AZ BridgeOS</h3>
                     <p className="text-sm text-white/80 mt-0.5">Your scientific companion</p>
                   </div>
                   <button onClick={() => setIsExpanded(false)} className="text-white/80 hover:text-white">
