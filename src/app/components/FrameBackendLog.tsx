@@ -79,7 +79,7 @@ export function FrameBackendLog({ onClose }: Props) {
         <div className="px-6 py-4 border-b border-gray-700 flex items-center gap-3 bg-[#1D2B4F] flex-shrink-0">
           <Database className="w-4 h-4 text-white/50 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">AZ BridgeOS · Activity Log</p>
+            <p className="text-sm font-semibold text-white">AZBridge · Activity Log</p>
             <p className="text-[9px] text-white/40">
               Anonymous retrieval and interaction trail · No personal identifiers stored
             </p>

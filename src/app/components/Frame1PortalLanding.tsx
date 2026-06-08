@@ -83,7 +83,7 @@ export function Frame1PortalLanding({ portalType, onChat }: Frame1PortalProps) {
           </div>
           <div>
             <p className="text-sm font-semibold leading-tight" style={{ color: "#1D2B4F" }}>
-              {isStudent ? "AZ Student Portal" : "AZ BridgeOS"}
+              {isStudent ? "AZ Student Portal" : "AZBridge"}
             </p>
             {isStudent ? (
               <p className="text-[8px] text-teal-600 font-medium">Student Version</p>
@@ -230,7 +230,7 @@ export function Frame1PortalLanding({ portalType, onChat }: Frame1PortalProps) {
                 className="text-[9px] font-semibold uppercase tracking-widest mb-3"
                 style={{ color: "#830051" }}
               >
-                AZ BridgeOS · Open Portal
+                AZBridge · Open Portal
               </p>
               <h2 className="text-2xl font-bold mb-2" style={{ color: "#1D2B4F" }}>
                 Search AstraZeneca's Scientific Resources
@@ -290,6 +290,18 @@ export function Frame1PortalLanding({ portalType, onChat }: Frame1PortalProps) {
 
       {/* ── Floating chat widget ──────────────────────────────────────────── */}
       <AnimatePresence>
+        {isChatOpen && (
+          <motion.div
+            key="chat-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsChatOpen(false)}
+            className="absolute inset-0 z-40"
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
         {!isChatOpen ? (
           <motion.button
             key="chat-fab"
@@ -325,7 +337,7 @@ export function Frame1PortalLanding({ portalType, onChat }: Frame1PortalProps) {
                 <Bot className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-semibold">AZ BridgeOS Assistant</p>
+                <p className="text-white text-xs font-semibold">AZBridge Assistant</p>
                 <p className="text-white/70 text-[8px]">
                   {isStudent
                     ? "Published literature only"

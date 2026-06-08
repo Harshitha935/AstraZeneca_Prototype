@@ -456,7 +456,7 @@ export function Frame9Executive() {
                 Executive Intelligence · AI-Generated
               </span>
               <span className="text-xs text-gray-400">·</span>
-              <span className="text-xs text-gray-500">Cross-graph synthesis · AZ BridgeOS</span>
+              <span className="text-xs text-gray-500">Cross-graph synthesis · AZBridge</span>
             </div>
             <h2 style={{ color: "#1D2B4F" }}>Executive Intelligence Report</h2>
           </div>

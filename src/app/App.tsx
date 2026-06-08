@@ -45,7 +45,7 @@ export default function App() {
       {/* ── Header ── */}
       <div className="border-b border-gray-200 px-5 py-2 bg-white flex items-center gap-4 flex-shrink-0">
         <div className="flex-shrink-0">
-          <h1 className="text-base leading-tight" style={{ color: "#830051" }}>AZ BridgeOS</h1>
+          <h1 className="text-base leading-tight" style={{ color: "#830051" }}>AZBridge</h1>
           <p className="text-[9px] text-gray-400">Signal Flow Prototype</p>
         </div>
 

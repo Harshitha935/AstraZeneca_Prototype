@@ -247,6 +247,18 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
 
           {/* ── Chat Widget ── */}
           <AnimatePresence>
+            {isChatOpen && (
+              <motion.div
+                key="chat-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsChatOpen(false)}
+                className="absolute inset-0 z-40"
+              />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
             {!isChatOpen ? (
               <motion.button
                 key="icon"
@@ -267,11 +279,11 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 className="absolute right-8 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 flex"
-                style={{ bottom: "80px", maxHeight: "530px" }}
+                style={{ bottom: "80px", maxHeight: "440px" }}
               >
 
                 {/* ── Chat panel (left) ── */}
-                <div className="w-[460px] flex flex-col overflow-hidden flex-shrink-0">
+                <div className="w-[380px] flex flex-col overflow-hidden flex-shrink-0">
 
                   {/* Header */}
                   <div className="px-5 py-4 flex items-center justify-between flex-shrink-0"
@@ -301,7 +313,7 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
                   </div>
 
                   {/* Body */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ maxHeight: "390px" }}>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ maxHeight: "300px" }}>
                     {!showResponse && !showMARedirect ? (
                       <>
                         {quickQueries.map((query, idx) => (
@@ -442,11 +454,11 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
 
                 {/* ── News & Updates panel (right, inside dialog) ── */}
                 <motion.div
-                  animate={{ width: isDrawerOpen ? 320 : 0 }}
+                  animate={{ width: isDrawerOpen ? 260 : 0 }}
                   transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                   className="overflow-hidden flex-shrink-0 border-l border-gray-100"
                 >
-                  <div className="w-[320px] h-full flex flex-col">
+                  <div className="w-[260px] h-full flex flex-col">
 
                     {/* Panel header */}
                     <div className="flex-shrink-0 px-3 py-3 border-b border-gray-200"

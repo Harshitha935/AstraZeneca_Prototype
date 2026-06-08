@@ -78,7 +78,7 @@ export function Frame2MedicalAffairsPortal({ initialQuery, onNavigate }: Frame2P
     if (selectedCategory && selectedUserType) {
       speakMessage("Thank you. Please speak your medical question when ready.");
     } else if (selectedCategory) {
-      speakMessage("Great. Now, please confirm you are a patient.");
+      speakMessage("Great. Confirm your identity.");
     }
   }, [selectedCategory, selectedUserType]);
 

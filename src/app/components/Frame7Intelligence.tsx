@@ -264,7 +264,7 @@ export function Frame7Intelligence({ onRestart, onNavigate }: Frame7Props) {
                 Event Intelligence
               </span>
               <span className="text-xs text-gray-400">·</span>
-              <span className="text-xs text-gray-500">Processed by AZ BridgeOS</span>
+              <span className="text-xs text-gray-500">Processed by AZBridge</span>
             </div>
             <h2 style={{ color: "#1D2B4F" }} className="mb-3 leading-snug">
               {WEBINAR_TITLE}
