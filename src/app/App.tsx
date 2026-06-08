@@ -198,7 +198,7 @@ export default function App() {
               ) : portalType === "patient" ? (
                 <FramePatientPortal />
               ) : (
-                <Frame8HCPChat onNavigate={() => goTo(6)} portalType={portalType} />
+                <Frame8HCPChat onNavigate={() => goTo(6)} portalType={portalType} initialQuery={chatQuery} />
               )}
             </motion.div>
           )}

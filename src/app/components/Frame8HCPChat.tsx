@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, User, Bot, Lock, BookOpen, ArrowRight, X, Copy, Check } from "lucide-react";
 import { logEvent, DEMO_QUERY } from "../lib/activityLog";
@@ -9,6 +9,7 @@ export type PortalType = "open" | "student" | "hcp" | "patient";
 interface Frame8Props {
   onNavigate: () => void;
   portalType?: PortalType;
+  initialQuery?: string;
 }
 
 const DDR_PAPERS = [
@@ -128,7 +129,7 @@ const PORTAL_CONFIG = {
   },
 } as const;
 
-export function Frame8HCPChat({ onNavigate, portalType = "hcp" }: Frame8Props) {
+export function Frame8HCPChat({ onNavigate, portalType = "hcp", initialQuery = "" }: Frame8Props) {
   const [input, setInput] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [query, setQuery] = useState("");
@@ -147,11 +148,9 @@ export function Frame8HCPChat({ onNavigate, portalType = "hcp" }: Frame8Props) {
     open: "answered_light_search", student: "answered_medium_search", hcp: "answered_deep_search",
   } as const;
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const submittedQuery = input.trim();
+  const submitQuery = (submittedQuery: string) => {
+    if (!submittedQuery.trim()) return;
     setQuery(submittedQuery);
-    setInput("");
     setSubmitted(true);
     setSearching(true);
     logEvent({
@@ -178,6 +177,19 @@ export function Frame8HCPChat({ onNavigate, portalType = "hcp" }: Frame8Props) {
       });
     }, 1000);
   };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const submittedQuery = input.trim();
+    setInput("");
+    submitQuery(submittedQuery);
+  };
+
+  // Carry the query typed on the landing page straight into the chat
+  useEffect(() => {
+    if (initialQuery.trim()) submitQuery(initialQuery.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const STUDENT_ANSWER =
     "DNA Damage Response (DDR) is a sophisticated network of cellular surveillance pathways that maintains genomic integrity by detecting and repairing DNA lesions. The core signalling cascade involves sensor proteins (MRN complex, RPA) that recruit and activate master kinases — primarily ATM and ATR — which phosphorylate downstream effectors including CHK1, CHK2, and H2AX. These signals coordinate cell cycle arrest, DNA repair, and — when damage is irreparable — apoptotic elimination of the cell. In oncology, DDR pathway alterations are found in approximately 40% of solid tumours, creating targetable synthetic lethal vulnerabilities. Most powerfully, PARP inhibition in homologous recombination-deficient tumours (BRCA1/2 mutations) induces catastrophic replication stress. Emerging strategies combine DDR inhibitors (PARPi, ATRi, WEE1i) with targeted agents such as osimertinib to broaden efficacy across biomarker-selected populations.";

@@ -2,22 +2,6 @@
 @import './tailwind.css';
 @import './theme.css';
 
-/* Force a landscape layout when opened on a phone held in portrait orientation
-   (e.g. scanning a QR code) by rotating the whole app 90deg to fill the screen. */
-@media screen and (max-width: 900px) and (orientation: portrait) {
-  html, body {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  #root {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100vh;
-    height: 100vw;
-    transform: translate(-50%, -50%) rotate(90deg);
-    transform-origin: center center;
-  }
+html, body, #root {
+  overflow: hidden;
 }
