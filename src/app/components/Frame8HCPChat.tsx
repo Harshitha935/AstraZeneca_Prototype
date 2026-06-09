@@ -127,6 +127,27 @@ const PORTAL_CONFIG = {
       "Pre-approval submissions",
     ],
   },
+  patient: {
+    label: "Patient",
+    clearance: "Patient Portal",
+    searchModeLabel: "—",
+    searchModeActive: false,
+    searchingText: "Searching…",
+    badgeBg: "bg-sky-50 border-sky-200",
+    badgeText: "text-sky-800",
+    dotColor: "bg-sky-400",
+    paperBadge: "✓ Care Team Approved",
+    paperBadgeClass: "bg-sky-100 text-sky-700",
+    welcomeMsg:
+      "I can only share information from resources your care team has approved for you.",
+    introMsg: "Here are your approved resources:",
+    cleared: ["Care team–approved resources"],
+    blocked: [
+      "Clinical trial data",
+      "Scientific literature",
+      "Prescribing information",
+    ],
+  },
 } as const;
 
 export function Frame8HCPChat({ onNavigate, portalType = "hcp", initialQuery = "" }: Frame8Props) {
@@ -142,11 +163,11 @@ export function Frame8HCPChat({ onNavigate, portalType = "hcp", initialQuery = "
   const isDemoQuery = query === DEMO_QUERY && portalType !== "hcp";
 
   const SEARCH_MODE_MAP: Record<string, SearchMode> = {
-    open: "Light Search", student: "Medium Search", hcp: "Deep Search",
+    open: "Light Search", student: "Medium Search", hcp: "Deep Search", patient: "—",
   };
-  const ACCESS_RESULT_MAP = {
-    open: "answered_light_search", student: "answered_medium_search", hcp: "answered_deep_search",
-  } as const;
+  const ACCESS_RESULT_MAP: Record<string, string> = {
+    open: "answered_light_search", student: "answered_medium_search", hcp: "answered_deep_search", patient: "n/a",
+  };
 
   const submitQuery = (submittedQuery: string) => {
     if (!submittedQuery.trim()) return;
@@ -326,29 +347,33 @@ export function Frame8HCPChat({ onNavigate, portalType = "hcp", initialQuery = "
           {/* Results */}
           <AnimatePresence>
 
-            {/* Demo query gate — open & student */}
-            {showPapers && isDemoQuery && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex gap-3"
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
-                  style={{ backgroundColor: "#1D2B4F" }}
-                >
+            {/* Open portal — demo query gate */}
+            {showPapers && query === DEMO_QUERY && portalType === "open" && (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+                <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#1D2B4F" }}>
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-lg shadow-sm border border-gray-100">
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    This content is only available to registered Healthcare Professionals.{" "}
-                    <button
-                      className="font-medium underline underline-offset-2 hover:opacity-75 transition-opacity"
-                      style={{ color: "#830051" }}
-                    >
+                <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 max-w-lg shadow-sm border border-red-100">
+                  <p className="text-sm leading-relaxed" style={{ color: "#830051" }}>
+                    Register as a Healthcare Professional to access this information.{" "}
+                    <button className="font-semibold underline underline-offset-2 hover:opacity-75 transition-opacity" style={{ color: "#830051" }}>
                       Register Now
-                    </button>{" "}
-                    to access.
+                    </button>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Student portal — demo query access denied */}
+            {showPapers && query === DEMO_QUERY && portalType === "student" && (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+                <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-red-100">
+                  <Lock className="w-4 h-4 text-red-600" />
+                </div>
+                <div className="bg-red-50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-lg shadow-sm border border-red-200">
+                  <p className="text-xs font-bold text-red-700 mb-1 uppercase tracking-wide">Access Denied</p>
+                  <p className="text-sm text-red-800 leading-relaxed">
+                    Advanced clinical evidence is outside the scope of the Student Portal. This content is restricted to verified Healthcare Professionals.
                   </p>
                 </div>
               </motion.div>
@@ -752,7 +777,7 @@ export function Frame8HCPChat({ onNavigate, portalType = "hcp", initialQuery = "
             <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
               Accessible
             </p>
-            {cfg.cleared.map((item) => (
+            {cfg.cleared.map((item: string) => (
               <div key={item} className="flex items-start gap-1.5 mb-1.5">
                 <div className="w-3.5 h-3.5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg viewBox="0 0 10 10" fill="none" className="w-2 h-2">
@@ -775,7 +800,7 @@ export function Frame8HCPChat({ onNavigate, portalType = "hcp", initialQuery = "
             <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
               Not Accessible
             </p>
-            {cfg.blocked.map((item) => (
+            {cfg.blocked.map((item: string) => (
               <div key={item} className="flex items-start gap-1.5 mb-1.5">
                 <div className="w-3.5 h-3.5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Lock className="w-2 h-2 text-red-500" />

@@ -194,7 +194,7 @@ export default function App() {
           {currentFrame === 5 && (
             <motion.div key={`f5-${portalType}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
               {portalType === "hcp" ? (
-                <Frame5MSLWorkflow query={chatQuery} onNavigate={() => goTo(6)} onWebinar={() => goTo(7)} />
+                <Frame5MSLWorkflow query={chatQuery} onNavigate={() => goTo(6)} onWebinar={() => goTo(7)} onMedicalAffairs={(q) => goTo(2, q)} />
               ) : portalType === "patient" ? (
                 <FramePatientPortal />
               ) : (

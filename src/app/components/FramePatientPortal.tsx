@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Bot, User, FileText, Heart, ChevronRight, CheckCircle } from "lucide-react";
+import { DEMO_QUERY } from "../lib/activityLog";
 
 const ACCENT = "#0369a1";
 
@@ -57,6 +58,9 @@ const QUICK_QUESTIONS = [
 ];
 
 function getResponse(input: string): { text: string; sources: Resource[] } {
+  if (input.trim() === DEMO_QUERY) {
+    return { text: "Invalid search. Clinical evidence queries are outside the scope of the Patient Portal. Please speak to your care team for questions about your treatment.", sources: [] };
+  }
   const q = input.toLowerCase();
   if (q.includes("treatment") || q.includes("therapy") || q.includes("drug") || q.includes("medication") || q.includes("medicine"))
     return { text: RESPONSES.treatment, sources: RESOURCE_SETS.treatment };

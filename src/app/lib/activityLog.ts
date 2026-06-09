@@ -1,7 +1,7 @@
 export const DEMO_QUERY =
   "What's the current evidence on [drug] in patients who've already progressed on a PD-1 inhibitor — any real-world data beyond the trial population?";
 
-export type PortalType = "open" | "student" | "hcp";
+export type PortalType = "open" | "student" | "hcp" | "patient";
 
 export type ActionType =
   | "demo_query_click"

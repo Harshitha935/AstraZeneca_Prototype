@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bot, User, BookOpen, Lock, ArrowRight, Send, Play, ChevronRight, ChevronLeft } from "lucide-react";
+import { Bot, User, BookOpen, Lock, ArrowRight, Send, Play, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react";
+import { DEMO_QUERY } from "../lib/activityLog";
 
 interface Frame5Props {
   query?: string;
   onNavigate: () => void;
   onWebinar?: () => void;
+  onMedicalAffairs?: (query: string) => void;
 }
 
 const DDR_PAPERS = [
@@ -241,7 +243,7 @@ function DDRGraphSVG({ blockedPulse, showPapers }: { blockedPulse: boolean; show
   );
 }
 
-export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate, onWebinar }: Frame5Props) {
+export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate, onWebinar, onMedicalAffairs }: Frame5Props) {
   const [searching, setSearching]       = useState(true);
   const [showPapers, setShowPapers]     = useState(false);
   const [showClose, setShowClose]       = useState(false);
@@ -314,6 +316,55 @@ export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate, onWebina
           <AnimatePresence>
             {showPapers && (
               <>
+                {query === DEMO_QUERY ? (
+                  /* ── Medical Affairs escalation ── */
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2">
+                    <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
+                      style={{ backgroundColor: "#1D2B4F" }}>
+                      <Bot className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <div className="flex-1 max-w-[90%]">
+                      <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2.5 shadow-sm border border-gray-100 mb-2">
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          This query involves <strong>post-progression real-world evidence</strong> beyond published trial populations — it requires Medical Affairs input to provide an accurate, compliant response.
+                        </p>
+                      </div>
+                      <div className="rounded-xl overflow-hidden border border-purple-200 shadow-sm">
+                        <div className="px-3 pt-2.5 pb-2 bg-purple-50">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: "#830051" }}>
+                              <ExternalLink className="w-2.5 h-2.5 text-white" />
+                            </div>
+                            <span className="text-[8px] font-bold uppercase tracking-wide text-purple-700">Medical Affairs Referral</span>
+                          </div>
+                          <p className="text-[10px] font-semibold leading-snug" style={{ color: "#1D2B4F" }}>
+                            Post-Progression PD-1 Evidence: Real-World Data Request
+                          </p>
+                          <p className="text-[8px] text-gray-500 mt-0.5">
+                            AstraZeneca Medical Affairs Spain · Oncology Franchise
+                          </p>
+                        </div>
+                        <div className="bg-white px-3 py-2.5">
+                          <p className="text-[9px] text-gray-600 leading-relaxed mb-2">
+                            The Medical Affairs team can provide a tailored medical response including real-world data, expanded access programmes, and evidence summaries outside the standard published literature.
+                          </p>
+                          {onMedicalAffairs && (
+                            <button
+                              onClick={() => onMedicalAffairs(query)}
+                              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-semibold text-white transition-opacity hover:opacity-90"
+                              style={{ backgroundColor: "#830051" }}
+                            >
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              Open Medical Affairs Portal
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <>
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2">
                   <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
                     style={{ backgroundColor: "#1D2B4F" }}>
@@ -417,6 +468,8 @@ export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate, onWebina
                     </div>
                   </div>
                 </motion.div>
+                  </>
+                )}
               </>
             )}
           </AnimatePresence>
