@@ -115,6 +115,10 @@ const COMPLIANCE_GREETING: ChatMessage = {
   text: "Welcome to AstraZeneca Spain Medical Information. To comply with local regulations (Real Decreto 1416/1994), this service is strictly reserved for verified healthcare professionals. Please verify your identity to continue.",
 };
 
+// Module-level — survives navigation remounts, resets on browser refresh.
+let _authState: AuthState = "locked";
+let _messages: ChatMessage[] = [COMPLIANCE_GREETING];
+
 // ── NewsCard ──────────────────────────────────────────────────────────────────
 function NewsCard({ item }: { item: NewsItem }) {
   const color = CAT_COLOR[item.category];
@@ -189,11 +193,24 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
   );
 
   // ── Auth state machine ────────────────────────────────────────────────────
-  const [authState, setAuthState] = useState<AuthState>("locked");
+  // Read initial values from module-level vars so auth survives navigation
+  // but resets to "locked" on a full browser refresh (module re-evaluates).
+  const [authState, _setAuthState] = useState<AuthState>(() => _authState);
+  const setAuthState = (s: AuthState) => { _authState = s; _setAuthState(s); };
+
   const [oneKeyId,  setOneKeyId]  = useState("");
   const [oneKeyPw,  setOneKeyPw]  = useState("");
   const [showPw,    setShowPw]    = useState(false);
-  const [messages,  setMessages]  = useState<ChatMessage[]>([COMPLIANCE_GREETING]);
+
+  const [messages, _setMessages] = useState<ChatMessage[]>(() => _messages);
+  const setMessages = (
+    update: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]),
+  ) => {
+    const next = typeof update === "function" ? update(_messages) : update;
+    _messages = next;
+    _setMessages(next);
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const addMessage = (type: ChatMessage["type"], text: string) =>
