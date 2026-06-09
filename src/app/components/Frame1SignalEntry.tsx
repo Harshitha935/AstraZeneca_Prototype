@@ -4,6 +4,7 @@ import {
   MessageCircle, Clock, Phone, Folder, FileText, FileSpreadsheet,
   Image, Send, Bell, Calendar, Radio, Megaphone, Newspaper,
   Lock, ShieldCheck, ShieldAlert, KeyRound, X, Eye, EyeOff, Timer,
+  ChevronLeft, ChevronRight, RefreshCw, Bookmark, MoreHorizontal,
 } from "lucide-react";
 
 type PortalType = "open" | "student" | "hcp";
@@ -287,7 +288,7 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
             </div>
           </div>
 
-          {/* ── OneKey Mock Modal ─────────────────────────────────────────────── */}
+          {/* ── OneKey Browser Window Simulation ──────────────────────────────── */}
           <AnimatePresence>
             {authState === "modal" && (
               <>
@@ -295,105 +296,188 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
                 <motion.div
                   key="onekey-scrim"
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[70]"
+                  className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[70]"
                 />
 
-                {/* Popup "browser window" */}
+                {/* Full browser window */}
                 <motion.div
                   key="onekey-modal"
-                  initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                  initial={{ scale: 0.94, opacity: 0, y: 16 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.92, opacity: 0, y: 20 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute z-[80] rounded-xl overflow-hidden shadow-2xl"
-                  style={{ width: 340, top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+                  exit={{ scale: 0.94, opacity: 0, y: 16 }}
+                  transition={{ duration: 0.22 }}
+                  className="absolute z-[80] rounded-xl overflow-hidden shadow-2xl flex flex-col"
+                  style={{ width: 520, height: 530, top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
                 >
-                  {/* Window chrome */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-200 border-b border-gray-300">
-                    <button
-                      onClick={() => setAuthState("locked")}
-                      className="w-3 h-3 rounded-full bg-red-400 hover:bg-red-500 transition-colors flex items-center justify-center"
-                    >
-                      <X className="w-2 h-2 text-red-900 opacity-0 hover:opacity-100" />
-                    </button>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                    <div className="w-3 h-3 rounded-full bg-green-400" />
-                    <div className="flex-1 mx-2 bg-white rounded px-2 py-0.5 text-[8px] text-gray-500 font-mono truncate">
-                      https://onekey.iqvia.com/oauth/authorize
-                    </div>
-                    <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                  </div>
-
-                  {/* Login form body */}
-                  <div className="bg-white px-6 pt-5 pb-6">
-                    {/* IQVIA OneKey branding */}
-                    <div className="flex items-center gap-2 mb-5">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: "#1A2B4C" }}
-                      >
-                        <KeyRound className="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold leading-none" style={{ color: "#1A2B4C" }}>IQVIA OneKey</p>
-                        <p className="text-[8px] text-gray-400 mt-0.5">Healthcare Professional Identity</p>
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] text-gray-600 mb-4 leading-relaxed">
-                      Sign in to verify your identity as a licensed healthcare professional.
-                    </p>
-
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[9px] font-semibold text-gray-600 mb-1">
-                          OneKey ID / Email
-                        </label>
-                        <input
-                          type="email"
-                          value={oneKeyId}
-                          onChange={e => setOneKeyId(e.target.value)}
-                          placeholder="hcp@hospital.es"
-                          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent bg-gray-50"
-                          style={{ "--tw-ring-color": "#1A2B4C" } as React.CSSProperties}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-semibold text-gray-600 mb-1">
-                          Password
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showPw ? "text" : "password"}
-                            value={oneKeyPw}
-                            onChange={e => setOneKeyPw(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") handleVerify(); }}
-                            placeholder="••••••••"
-                            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent bg-gray-50 pr-8"
-                            style={{ "--tw-ring-color": "#1A2B4C" } as React.CSSProperties}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPw(p => !p)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPw ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleVerify}
-                        className="w-full py-2 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                        style={{ backgroundColor: "#1A2B4C" }}
-                      >
-                        Log In
+                  {/* ── Tab bar ── */}
+                  <div className="flex items-end px-3 pt-2 gap-0 bg-[#dee1e6] select-none">
+                    {/* Active tab */}
+                    <div className="flex items-center gap-1.5 bg-white rounded-t-lg px-3 py-1.5 text-[8px] text-gray-700 font-medium max-w-[200px]">
+                      <Lock className="w-2.5 h-2.5 text-green-600 flex-shrink-0" />
+                      <span className="truncate">IQVIA OneKey — Sign In</span>
+                      <button onClick={() => setAuthState("locked")} className="ml-1 rounded-full p-0.5 hover:bg-gray-200 flex-shrink-0">
+                        <X className="w-2 h-2 text-gray-500" />
                       </button>
                     </div>
+                    <div className="mb-0.5 ml-1 w-5 h-5 rounded-full bg-[#dee1e6] hover:bg-gray-300 flex items-center justify-center cursor-pointer">
+                      <span className="text-gray-500 text-sm leading-none pb-0.5">+</span>
+                    </div>
+                  </div>
 
-                    <p className="text-[7px] text-gray-400 text-center mt-4 leading-relaxed">
-                      Secure OAuth 2.0 · IQVIA Identity Services · HCP verification only
-                    </p>
+                  {/* ── Browser chrome ── */}
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-[#f1f3f4] border-b border-gray-300 select-none">
+                    {/* Traffic lights */}
+                    <button onClick={() => setAuthState("locked")} className="w-3 h-3 rounded-full bg-red-400 hover:bg-red-500 transition-colors flex-shrink-0" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0" />
+                    <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0" />
+
+                    {/* Nav buttons */}
+                    <button className="ml-1 w-6 h-6 rounded flex items-center justify-center text-gray-400 opacity-40 cursor-default">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button className="w-6 h-6 rounded flex items-center justify-center text-gray-400 opacity-40 cursor-default">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-200 text-gray-500 transition-colors">
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+
+                    {/* Address bar */}
+                    <div className="flex-1 flex items-center gap-1.5 bg-white rounded-full px-3 py-1 border border-gray-300 shadow-sm">
+                      <Lock className="w-2.5 h-2.5 text-green-600 flex-shrink-0" />
+                      <span className="text-[8px] text-gray-600 font-mono flex-1 truncate">
+                        https://onekey.iqvia.com/oauth2/authorize?client_id=az-bridge&scope=hcp_identity
+                      </span>
+                    </div>
+
+                    <button className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-200 text-gray-400 transition-colors">
+                      <Bookmark className="w-3 h-3" />
+                    </button>
+                    <button className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-200 text-gray-400 transition-colors">
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* ── Website body ── */}
+                  <div className="flex-1 overflow-y-auto bg-gray-50 flex flex-col">
+
+                    {/* Site nav bar */}
+                    <div className="flex items-center justify-between px-6 py-2.5 flex-shrink-0" style={{ backgroundColor: "#1A2B4C" }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded flex items-center justify-center bg-white/10">
+                          <KeyRound className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="text-white font-bold text-[11px] tracking-widest uppercase">IQVIA</span>
+                        <span className="text-white/40 text-[8px] border-l border-white/20 pl-2 ml-1">OneKey</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {["Solutions", "Support", "Contact"].map(l => (
+                          <span key={l} className="text-white/50 text-[8px] cursor-pointer hover:text-white/80 transition-colors">{l}</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Hero strip */}
+                    <div className="px-6 py-4 text-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #0F1D35 0%, #1A3A6B 100%)" }}>
+                      <p className="text-white font-semibold text-[11px] mb-1">Verify Your Healthcare Professional Identity</p>
+                      <p className="text-white/50 text-[8px] leading-relaxed">
+                        Secure access powered by IQVIA's global HCP reference database · Real Decreto 1416/1994 compliant
+                      </p>
+                    </div>
+
+                    {/* Login card */}
+                    <div className="flex-1 flex items-start justify-center pt-5 px-6 pb-4">
+                      <div className="w-full max-w-[340px] bg-white rounded-xl border border-gray-200 shadow-md overflow-hidden">
+
+                        {/* Card header */}
+                        <div className="flex items-center gap-2.5 px-5 py-3 border-b border-gray-100 bg-gray-50">
+                          <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#1A2B4C" }}>
+                            <Lock className="w-2.5 h-2.5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] font-semibold text-gray-800">Sign in with OneKey ID</p>
+                            <p className="text-[7.5px] text-gray-400">AstraZeneca Medical Information Portal · Spain</p>
+                          </div>
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            <span className="text-[7px] text-green-700 font-medium">Secure</span>
+                          </div>
+                        </div>
+
+                        {/* Form */}
+                        <div className="px-5 py-4 space-y-3">
+                          <div>
+                            <label className="block text-[9px] font-semibold text-gray-600 mb-1">OneKey ID / Email</label>
+                            <input
+                              type="email"
+                              value={oneKeyId}
+                              onChange={e => setOneKeyId(e.target.value)}
+                              placeholder="hcp@hospital.es"
+                              className="w-full px-3 py-2 text-[10px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 bg-gray-50"
+                              style={{ "--tw-ring-color": "#1A2B4C" } as React.CSSProperties}
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <label className="text-[9px] font-semibold text-gray-600">Password</label>
+                              <span className="text-[7.5px] text-blue-500 cursor-pointer hover:underline">Forgot password?</span>
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showPw ? "text" : "password"}
+                                value={oneKeyPw}
+                                onChange={e => setOneKeyPw(e.target.value)}
+                                onKeyDown={e => { if (e.key === "Enter") handleVerify(); }}
+                                placeholder="••••••••"
+                                className="w-full px-3 py-2 text-[10px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 bg-gray-50 pr-8"
+                                style={{ "--tw-ring-color": "#1A2B4C" } as React.CSSProperties}
+                              />
+                              <button type="button" onClick={() => setShowPw(p => !p)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                {showPw ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={handleVerify}
+                            className="w-full py-2.5 rounded-lg text-[10px] font-semibold text-white transition-opacity hover:opacity-90 mt-1"
+                            style={{ backgroundColor: "#1A2B4C" }}
+                          >
+                            Log In
+                          </button>
+
+                          <p className="text-center text-[7.5px] text-gray-400">
+                            Don't have an account?{" "}
+                            <span className="text-blue-500 cursor-pointer hover:underline">Request HCP access</span>
+                          </p>
+                        </div>
+
+                        {/* Trust strip */}
+                        <div className="px-5 py-2.5 border-t border-gray-100 bg-gray-50 flex items-center justify-center gap-4">
+                          {[
+                            { icon: Lock, label: "256-bit TLS", color: "text-green-600" },
+                            { icon: ShieldCheck, label: "GDPR", color: "text-blue-500" },
+                            { icon: ShieldCheck, label: "ISO 27001", color: "text-purple-500" },
+                          ].map(({ icon: Icon, label, color }) => (
+                            <div key={label} className="flex items-center gap-1">
+                              <Icon className={`w-2.5 h-2.5 ${color}`} />
+                              <span className="text-[7px] text-gray-400">{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Site footer ── */}
+                  <div className="flex items-center justify-between px-6 py-2 flex-shrink-0" style={{ backgroundColor: "#0F1D35" }}>
+                    <span className="text-[7px] text-white/30">© 2026 IQVIA Inc. All rights reserved.</span>
+                    <div className="flex items-center gap-3">
+                      {["Privacy", "Terms", "Cookies"].map(l => (
+                        <span key={l} className="text-[7px] text-white/30 cursor-pointer hover:text-white/60 transition-colors">{l}</span>
+                      ))}
+                    </div>
                   </div>
                 </motion.div>
               </>
@@ -721,7 +805,39 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
                   transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                   className="overflow-hidden flex-shrink-0 border-l border-gray-100"
                 >
-                  <div className="w-[260px] h-full flex flex-col">
+                  <div className="w-[260px] h-full flex flex-col relative">
+                    {/* ── Locked overlay ── */}
+                    <AnimatePresence>
+                      {authState !== "unlocked" && (
+                        <motion.div
+                          key="news-lock"
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          className="absolute inset-0 z-10 flex flex-col items-center justify-center"
+                          style={{ background: "rgba(15,29,53,0.88)", backdropFilter: "blur(3px)" }}
+                        >
+                          <div className="flex flex-col items-center gap-3 text-center px-5">
+                            <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
+                              <Lock className="w-5 h-5 text-white/60" />
+                            </div>
+                            <div>
+                              <p className="text-white text-xs font-semibold mb-1">News & Updates</p>
+                              <p className="text-white/40 text-[8px] leading-relaxed">
+                                Verify your identity to access news, conference alerts, and AZ announcements.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setAuthState("modal")}
+                              className="px-3 py-1.5 rounded-lg text-[8px] font-semibold text-white border border-white/20 bg-white/10 hover:bg-white/20 transition-colors"
+                            >
+                              Verify with OneKey
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ── News panel content (blurred while locked) ── */}
+                    <div className={`flex flex-col h-full transition-all ${authState !== "unlocked" ? "blur-[2px] pointer-events-none" : ""}`}>
                     <div className="flex-shrink-0 px-3 py-3 border-b border-gray-200" style={{ backgroundColor: "#1D2B4F" }}>
                       <div className="flex items-center justify-between mb-2.5">
                         <div className="flex items-center gap-2">
@@ -773,6 +889,7 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
                         Mark all read
                       </button>
                     </div>
+                    </div>{/* end blurred wrapper */}
                   </div>
                 </motion.div>
               </motion.div>
