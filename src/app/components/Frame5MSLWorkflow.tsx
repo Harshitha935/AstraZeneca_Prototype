@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Bot, User, BookOpen, Lock, ArrowRight, Send, Play, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react";
-import { DEMO_QUERY } from "../lib/activityLog";
+import { DEMO_QUERY, logEvent } from "../lib/activityLog";
 
 interface Frame5Props {
   query?: string;
@@ -251,10 +251,23 @@ export function Frame5MSLWorkflow({ query = "What is DDR?", onNavigate, onWebina
   const [graphCollapsed, setGraphCollapsed] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => { setSearching(false); setShowPapers(true); }, 1000);
+    logEvent({ portalType: "hcp", action: "query_submit", query, accessResult: "n/a", searchMode: "Deep Search", sourcesReturned: 0 });
+    const t1 = setTimeout(() => {
+      setSearching(false);
+      setShowPapers(true);
+      const isDemoQ = query === DEMO_QUERY;
+      logEvent({
+        portalType: "hcp",
+        action: "results_shown",
+        query,
+        accessResult: isDemoQ ? "gated_registration_required" : "answered_deep_search",
+        searchMode: "Deep Search",
+        sourcesReturned: isDemoQ ? 0 : DDR_PAPERS.length,
+      });
+    }, 1000);
     const t2 = setTimeout(() => { setShowClose(true); setBlockedPulse(true); }, 1800);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+  }, [query]);
 
   return (
     <div className="h-full flex overflow-hidden relative">

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { FrameBackendLog } from "./components/FrameBackendLog";
 import { FramePatientPortal } from "./components/FramePatientPortal";
 import { Frame1SignalEntry } from "./components/Frame1SignalEntry";
 import { Frame1PortalLanding } from "./components/Frame1PortalLanding";
@@ -34,7 +33,6 @@ export default function App() {
   const [currentFrame, setCurrentFrame] = useState<Frame>(1);
   const [chatQuery, setChatQuery] = useState<string>("");
   const [portalType, setPortalType] = useState<PortalType>("hcp");
-  const [showLog, setShowLog] = useState(false);
   const goTo = (frame: Frame, query?: string) => {
     if (query !== undefined) setChatQuery(query);
     setCurrentFrame(frame);
@@ -109,18 +107,6 @@ export default function App() {
             <span className="text-[8px] text-sky-700 font-medium">Patient Portal</span>
           </div>
         )}
-
-        {/* Log button */}
-        <button
-          onClick={() => setShowLog(true)}
-          className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 text-[9px] font-medium text-gray-500 hover:bg-gray-50 transition-all flex-shrink-0"
-        >
-          <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="1" y="1" width="12" height="12" rx="2" />
-            <path d="M4 4h6M4 7h6M4 10h3" />
-          </svg>
-          Log
-        </button>
 
         {/* Path indicator */}
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -226,10 +212,6 @@ export default function App() {
 
       </div>
 
-      {/* ── Backend log overlay ── */}
-      <AnimatePresence>
-        {showLog && <FrameBackendLog onClose={() => setShowLog(false)} />}
-      </AnimatePresence>
     </div>
   );
 }
