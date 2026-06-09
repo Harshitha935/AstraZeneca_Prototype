@@ -218,6 +218,8 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
     setShowMARedirect(false);
     setSelectedQuery("");
     addMessage("system", "Session expired due to inactivity. Please re-verify to continue.");
+    // Auto-open the re-auth popup after a brief moment, mirroring real session-expiry behaviour
+    setTimeout(() => setAuthState("modal"), 750);
   };
 
   useEffect(() => {
@@ -299,15 +301,16 @@ export function Frame1SignalEntry({ onMedicalAffairs, onChat, portalType = "hcp"
                   className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[70]"
                 />
 
-                {/* Full browser window */}
+                {/* Full browser window — use inset-0 m-auto to center so Framer
+                    Motion's own transform (scale/y) doesn't fight a CSS translate */}
                 <motion.div
                   key="onekey-modal"
                   initial={{ scale: 0.94, opacity: 0, y: 16 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
                   exit={{ scale: 0.94, opacity: 0, y: 16 }}
                   transition={{ duration: 0.22 }}
-                  className="absolute z-[80] rounded-xl overflow-hidden shadow-2xl flex flex-col"
-                  style={{ width: 520, height: 530, top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+                  className="absolute inset-0 m-auto z-[80] rounded-xl overflow-hidden shadow-2xl flex flex-col"
+                  style={{ width: 520, height: 530 }}
                 >
                   {/* ── Tab bar ── */}
                   <div className="flex items-end px-3 pt-2 gap-0 bg-[#dee1e6] select-none">
