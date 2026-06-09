@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Bot, User, FileText, Heart, ChevronRight, CheckCircle } from "lucide-react";
-import { DEMO_QUERY } from "../lib/activityLog";
+import { DEMO_QUERY, logEvent } from "../lib/activityLog";
 
 const ACCENT = "#0369a1";
 
@@ -92,14 +92,18 @@ export function FramePatientPortal() {
 
   const send = (text: string) => {
     if (!text.trim() || typing) return;
-    setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: "user", text: text.trim() }]);
+    const q = text.trim();
+    setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: "user", text: q }]);
     setInput("");
     setStarted(true);
     setTyping(true);
+    logEvent({ portalType: "patient", action: "query_submit", query: q, accessResult: "n/a", searchMode: "—", sourcesReturned: 0 });
     setTimeout(() => {
-      const { text: responseText, sources } = getResponse(text);
+      const { text: responseText, sources } = getResponse(q);
+      const isDemoQ = q === DEMO_QUERY;
       setTyping(false);
       setMessages(prev => [...prev, { id: `b-${Date.now()}`, role: "bot", text: responseText, sources }]);
+      logEvent({ portalType: "patient", action: "results_shown", query: q, accessResult: isDemoQ ? "gated_out_of_scope" : "n/a", searchMode: "—", sourcesReturned: sources.length });
     }, 900);
   };
 

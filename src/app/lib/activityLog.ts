@@ -35,6 +35,16 @@ export interface LogEntry {
 const SESSION_ID = Math.random().toString(36).slice(2, 10).toUpperCase();
 
 const _entries: LogEntry[] = [];
+const _listeners = new Set<() => void>();
+
+function notify() {
+  _listeners.forEach((cb) => cb());
+}
+
+export function subscribe(cb: () => void): () => void {
+  _listeners.add(cb);
+  return () => _listeners.delete(cb);
+}
 
 export function logEvent(
   fields: Omit<LogEntry, "id" | "timestamp" | "sessionId">,
@@ -45,6 +55,7 @@ export function logEvent(
     sessionId: SESSION_ID,
     ...fields,
   });
+  notify();
 }
 
 export function getLog(): readonly LogEntry[] {
@@ -53,4 +64,5 @@ export function getLog(): readonly LogEntry[] {
 
 export function clearLog(): void {
   _entries.length = 0;
+  notify();
 }

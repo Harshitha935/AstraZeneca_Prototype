@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { RefreshCw, Trash2, X, Database, Shield } from "lucide-react";
-import { getLog, clearLog, LogEntry, PortalType, AccessResult } from "../lib/activityLog";
+import { Trash2, X, Database, Shield, Wifi } from "lucide-react";
+import { getLog, clearLog, subscribe, LogEntry, PortalType, AccessResult } from "../lib/activityLog";
 
 const PORTAL_STYLE: Record<PortalType, { bg: string; text: string; border: string; label: string }> = {
   open:    { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200",   label: "OPEN"    },
   student: { bg: "bg-teal-50",   text: "text-teal-700",   border: "border-teal-200",   label: "STUDENT" },
   hcp:     { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", label: "HCP"     },
+  patient: { bg: "bg-sky-50",    text: "text-sky-700",    border: "border-sky-200",    label: "PATIENT" },
 };
 
 const RESULT_STYLE: Record<AccessResult, { bg: string; text: string; label: string }> = {
@@ -49,17 +50,24 @@ interface Props { onClose: () => void; }
 export function FrameBackendLog({ onClose }: Props) {
   const [entries, setEntries] = useState<readonly LogEntry[]>(() => getLog());
 
-  const refresh = () => setEntries([...getLog()]);
-  const clear   = () => { clearLog(); setEntries([]); };
+  // Live-update: subscribe to logEvent / clearLog so the table reflects
+  // events from whichever portal the user interacted with, in real time.
+  useEffect(() => {
+    const unsub = subscribe(() => setEntries([...getLog()]));
+    return unsub;
+  }, []);
 
   const total    = entries.length;
-  const byPortal = {
+  const byPortal: Record<PortalType, number> = {
     open:    entries.filter(e => e.portalType === "open").length,
     student: entries.filter(e => e.portalType === "student").length,
     hcp:     entries.filter(e => e.portalType === "hcp").length,
+    patient: entries.filter(e => e.portalType === "patient").length,
   };
   const gated    = entries.filter(e => e.accessResult.startsWith("gated")).length;
   const answered = entries.filter(e => e.accessResult.startsWith("answered")).length;
+
+  const portalsUsed = (Object.entries(byPortal) as [PortalType, number][]).filter(([, n]) => n > 0);
 
   return (
     <motion.div
@@ -81,18 +89,22 @@ export function FrameBackendLog({ onClose }: Props) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white">AZBridge · Activity Log</p>
             <p className="text-[9px] text-white/40">
-              Anonymous retrieval and interaction trail · No personal identifiers stored
+              Unified cross-portal event trail · Updates in real time · No personal identifiers stored
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Live indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/20">
+              <motion.div
+                className="w-1.5 h-1.5 rounded-full bg-green-400"
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1.6, repeat: Infinity }}
+              />
+              <Wifi className="w-2.5 h-2.5 text-green-400" />
+              <span className="text-[9px] text-green-300 font-medium">Live</span>
+            </div>
             <button
-              onClick={refresh}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" /> Refresh
-            </button>
-            <button
-              onClick={clear}
+              onClick={() => { clearLog(); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] transition-colors"
             >
               <Trash2 className="w-3 h-3" /> Clear
@@ -110,10 +122,14 @@ export function FrameBackendLog({ onClose }: Props) {
             <span className="text-sm font-bold text-gray-800">{total}</span>
           </div>
           <div className="w-px h-4 bg-gray-200" />
-          <div className="flex items-center gap-1.5">
-            <Badge label={`Open  ${byPortal.open}`}    bg="bg-blue-50"   text="text-blue-700"   border="border-blue-200" />
-            <Badge label={`Student  ${byPortal.student}`} bg="bg-teal-50" text="text-teal-700" border="border-teal-200" />
-            <Badge label={`HCP  ${byPortal.hcp}`}      bg="bg-purple-50" text="text-purple-700" border="border-purple-200" />
+          {/* Show only portals that have events; if none yet show all */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {(portalsUsed.length > 0 ? portalsUsed : (Object.entries(byPortal) as [PortalType, number][])).map(([pt, n]) => {
+              const s = PORTAL_STYLE[pt];
+              return (
+                <Badge key={pt} label={`${s.label}  ${n}`} bg={s.bg} text={s.text} border={s.border} />
+              );
+            })}
           </div>
           <div className="w-px h-4 bg-gray-200" />
           <div className="flex items-center gap-1.5">
@@ -139,7 +155,7 @@ export function FrameBackendLog({ onClose }: Props) {
                 <Database className="w-8 h-8 mb-3 opacity-20" />
                 <p className="text-sm font-medium">No events yet</p>
                 <p className="text-[10px] mt-1 text-gray-400">
-                  Interact with the portal to generate log entries
+                  Interact with any portal to generate log entries
                 </p>
               </motion.div>
             ) : (
@@ -161,8 +177,11 @@ export function FrameBackendLog({ onClose }: Props) {
                     const ps = PORTAL_STYLE[entry.portalType];
                     const rs = RESULT_STYLE[entry.accessResult];
                     return (
-                      <tr
+                      <motion.tr
                         key={entry.id}
+                        initial={{ opacity: 0, backgroundColor: "rgba(131,0,81,0.06)" }}
+                        animate={{ opacity: 1, backgroundColor: "rgba(0,0,0,0)" }}
+                        transition={{ duration: 0.6 }}
                         className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                       >
                         <td className="px-3 py-2.5 text-[9px] text-gray-400">
@@ -195,7 +214,7 @@ export function FrameBackendLog({ onClose }: Props) {
                         <td className="px-3 py-2.5 text-center">
                           <span className="text-[9px] font-semibold text-gray-700">{entry.sourcesReturned}</span>
                         </td>
-                      </tr>
+                      </motion.tr>
                     );
                   })}
                 </tbody>
