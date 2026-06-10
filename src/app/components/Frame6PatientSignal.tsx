@@ -1,26 +1,33 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronRight, Database, Shield, Trash2 } from "lucide-react";
-import { getLog, clearLog, subscribe, LogEntry, PortalType, AccessResult } from "../lib/activityLog";
+import { CheckCircle, AlertCircle, XCircle, ChevronDown, ChevronRight, Lock, Database, Trash2 } from "lucide-react";
+import { getLog, clearLog, subscribe, LogEntry, PortalType } from "../lib/activityLog";
 
 interface Frame6Props {
   onNavigate: () => void;
 }
 
-const PORTAL_STYLE: Record<PortalType, { bg: string; text: string; border: string; dot: string; label: string }> = {
-  open:    { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200",   dot: "bg-blue-400",   label: "OPEN"    },
-  student: { bg: "bg-teal-50",   text: "text-teal-700",   border: "border-teal-200",   dot: "bg-teal-500",   label: "STUDENT" },
-  hcp:     { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", dot: "bg-purple-500", label: "HCP"     },
-  patient: { bg: "bg-sky-50",    text: "text-sky-700",    border: "border-sky-200",    dot: "bg-sky-400",    label: "PATIENT" },
-};
+type Clearance = "cleared" | "conditional" | "restricted" | "prohibited";
 
-const RESULT_STYLE: Record<AccessResult, { bg: string; text: string; label: string }> = {
-  "gated_registration_required": { bg: "bg-red-100",   text: "text-red-700",    label: "Gated · Registration" },
-  "gated_out_of_scope":          { bg: "bg-amber-100", text: "text-amber-700",  label: "Gated · Out of Scope" },
-  "answered_light_search":       { bg: "bg-blue-100",  text: "text-blue-700",   label: "Answered · Light"     },
-  "answered_medium_search":      { bg: "bg-teal-100",  text: "text-teal-700",   label: "Answered · Medium"    },
-  "answered_deep_search":        { bg: "bg-green-100", text: "text-green-700",  label: "Answered · Deep"      },
-  "n/a":                         { bg: "bg-gray-100",  text: "text-gray-500",   label: "—"                    },
+interface RowData {
+  id: string;
+  triggerCode: string;
+  upward: string;
+  name: string;
+  color: string;
+  activatesDownstream: boolean;
+  downstreamNodes: string[];
+  comments: string;
+  clearance: Clearance;
+  clearanceNote: string;
+  timestamp: string;
+}
+
+const PORTAL_META: Record<PortalType, { label: string; color: string }> = {
+  open:    { label: "Open Portal",    color: "#3B82F6" },
+  student: { label: "Student Portal", color: "#14B8A6" },
+  hcp:     { label: "HCP Portal",     color: "#A855F7" },
+  patient: { label: "Patient Portal", color: "#0EA5E9" },
 };
 
 const ACTION_LABEL: Record<string, string> = {
@@ -31,80 +38,244 @@ const ACTION_LABEL: Record<string, string> = {
   copy_answer:      "Answer copied",
 };
 
+const GRID = "1fr 1.3fr 0.75fr 0.85fr 1.8fr 1.1fr";
+
+// Deterministic short trigger code derived from the event id, so the same
+// event always renders the same code without needing to store one.
+function triggerCode(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return `TRG-${hash.toString(16).toUpperCase().padStart(6, "0").slice(-6)}`;
+}
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function Badge({ label, bg, text, border }: { label: string; bg: string; text: string; border?: string }) {
+// Maps a raw cross-portal activity event onto the Medical Affairs
+// "backbone log" row shape (upward connection / node / downstream / trigger / comments / clearance).
+function toRow(entry: LogEntry): RowData {
+  const meta = PORTAL_META[entry.portalType];
+  const name = entry.query.length > 80 ? entry.query.slice(0, 80) + "…" : (entry.query || "(no query)");
+
+  let upward: string;
+  let comments: string;
+  let activatesDownstream = false;
+  let downstreamNodes: string[] = [];
+  let clearance: Clearance = "conditional";
+  let clearanceNote = "—";
+
+  if (entry.action === "query_submit") {
+    upward = `${meta.label} → Chat Assistant`;
+    comments = `Query received from ${meta.label}: "${entry.query}". Routed to retrieval engine.`;
+    clearanceNote = "Pending — search not yet executed";
+  } else if (entry.action === "results_shown") {
+    upward = `${meta.label} → Retrieval Engine${entry.searchMode !== "—" ? ` (${entry.searchMode})` : ""}`;
+    if (entry.accessResult.startsWith("answered")) {
+      activatesDownstream = entry.sourcesReturned > 0;
+      downstreamNodes = Array.from({ length: entry.sourcesReturned }, (_, i) => `Published Source ${i + 1}`);
+      comments = `${entry.searchMode} returned ${entry.sourcesReturned} published source${entry.sourcesReturned === 1 ? "" : "s"} for: "${entry.query}".`;
+      clearance = "cleared";
+      clearanceNote = `Cleared — ${entry.searchMode} accessible to ${meta.label} tier`;
+    } else if (entry.accessResult === "gated_registration_required") {
+      comments = `Access gate triggered for: "${entry.query}". Registration required — results withheld from requester.`;
+      clearance = "prohibited";
+      clearanceNote = `ACCESS BLOCKED — registration required for ${meta.label} requester`;
+    } else if (entry.accessResult === "gated_out_of_scope") {
+      comments = `Query flagged as out of scope for ${meta.label}: "${entry.query}". No results returned.`;
+      clearance = "restricted";
+      clearanceNote = `RESTRICTED — outside ${meta.label} scope`;
+    } else {
+      comments = `Results processed for: "${entry.query}".`;
+    }
+  } else if (entry.action === "copy_answer") {
+    upward = `${meta.label} → Clipboard`;
+    comments = `User copied the synthesised answer for: "${entry.query}".`;
+    clearance = "cleared";
+    clearanceNote = `Cleared — answer export permitted for ${meta.label} tier`;
+  } else if (entry.action === "cta_dismiss") {
+    upward = `${meta.label} → Registration CTA`;
+    comments = `Registration prompt dismissed for: "${entry.query}".`;
+    clearanceNote = "Conditional — CTA dismissed, no further action";
+  } else {
+    upward = `${meta.label} → ${ACTION_LABEL[entry.action] ?? entry.action}`;
+    comments = `Demo query selected: "${entry.query}".`;
+    clearanceNote = "Conditional — query staged, awaiting submission";
+  }
+
+  return {
+    id: entry.id,
+    triggerCode: triggerCode(entry.id),
+    upward,
+    name,
+    color: meta.color,
+    activatesDownstream,
+    downstreamNodes,
+    comments,
+    clearance,
+    clearanceNote,
+    timestamp: entry.timestamp,
+  };
+}
+
+function ClearanceBadge({ clearance, note }: { clearance: Clearance; note: string }) {
+  if (clearance === "prohibited") {
+    return (
+      <div className="rounded-lg border px-2 py-1.5 bg-red-50 border-red-300">
+        <div className="flex items-center gap-1 mb-0.5">
+          <Lock className="w-3 h-3 text-red-600" />
+          <span className="text-[9px] font-bold tracking-wide text-red-700">BLOCKED</span>
+        </div>
+        <p className="text-[8px] leading-tight text-red-600 opacity-90">{note}</p>
+      </div>
+    );
+  }
+  const config = {
+    cleared:     { Icon: CheckCircle, bg: "bg-green-50", border: "border-green-300", text: "text-green-800", label: "CLEARED"     },
+    conditional: { Icon: AlertCircle, bg: "bg-amber-50", border: "border-amber-300", text: "text-amber-800", label: "CONDITIONAL" },
+    restricted:  { Icon: XCircle,     bg: "bg-red-50",   border: "border-red-300",   text: "text-red-800",   label: "RESTRICTED"  },
+  }[clearance];
+  const { Icon, bg, border, text, label } = config;
   return (
-    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-semibold ${bg} ${text} ${border ? `border ${border}` : ""}`}>
-      {label}
-    </span>
+    <div className={`rounded-lg border px-2 py-1.5 ${bg} ${border}`}>
+      <div className="flex items-center gap-1 mb-0.5">
+        <Icon className={`w-3 h-3 ${text}`} />
+        <span className={`text-[9px] font-bold tracking-wide ${text}`}>{label}</span>
+      </div>
+      <p className={`text-[8px] leading-tight ${text} opacity-80`}>{note}</p>
+    </div>
   );
 }
 
-function LiveRow({ entry, index, total }: { entry: LogEntry; index: number; total: number }) {
-  const ps = PORTAL_STYLE[entry.portalType];
-  const rs = RESULT_STYLE[entry.accessResult];
-  const isGated = entry.accessResult.startsWith("gated");
-
+function DownstreamCell({ activates, nodes, blocked }: { activates: boolean; nodes: string[]; blocked?: boolean }) {
+  const [open, setOpen] = useState(false);
+  if (blocked) {
+    return (
+      <div className="flex items-center gap-1">
+        <Lock className="w-3.5 h-3.5 text-red-400" />
+        <span className="text-[9px] text-red-400">Blocked</span>
+      </div>
+    );
+  }
+  if (!activates) {
+    return (
+      <div className="flex items-center gap-1">
+        <XCircle className="w-3.5 h-3.5 text-gray-400" />
+        <span className="text-[9px] text-gray-400">No activation</span>
+      </div>
+    );
+  }
   return (
-    <motion.tr
+    <div>
+      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-green-700">
+        <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+        <span className="text-[9px] font-medium">Yes — {nodes.length} node{nodes.length > 1 ? "s" : ""}</span>
+        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-1 space-y-0.5">
+            {nodes.map(n => (
+              <div key={n} className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <span className="text-[8px] text-green-800">{n}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function LogRow({ row, expanded, onToggle }: { row: RowData; expanded: boolean; onToggle: () => void }) {
+  const isBlocked = row.clearance === "prohibited";
+  return (
+    <motion.div
       initial={{ opacity: 0, backgroundColor: "rgba(131,0,81,0.08)" }}
       animate={{ opacity: 1, backgroundColor: "rgba(0,0,0,0)" }}
       transition={{ duration: 0.7 }}
-      className={`border-b transition-colors ${isGated ? "bg-red-50/40 border-red-100 hover:bg-red-50/70" : "border-gray-100 hover:bg-gray-50/60"}`}
+      className={`border-b cursor-pointer transition-colors ${
+        isBlocked
+          ? expanded ? "bg-red-50 border-red-100" : "bg-[#FFF5F5] border-red-100 hover:bg-red-50"
+          : expanded ? "bg-[#F8F4FF] border-gray-100" : "bg-white border-gray-100 hover:bg-gray-50"
+      }`}
+      onClick={onToggle}
     >
-      <td className="px-3 py-2.5 text-[9px] text-gray-400 font-mono">{total - index}</td>
-      <td className="px-3 py-2.5 whitespace-nowrap">
-        <p className="text-[9px] font-medium text-gray-700 font-mono">{formatTime(entry.timestamp)}</p>
-      </td>
-      <td className="px-3 py-2.5">
-        <span className="text-[8px] font-mono text-gray-400">{entry.sessionId}</span>
-      </td>
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full ${ps.dot}`} />
-          <Badge label={ps.label} bg={ps.bg} text={ps.text} border={ps.border} />
+      {isBlocked && (
+        <div className="px-4 pt-1.5 pb-0 flex items-center gap-1.5">
+          <Lock className="w-3 h-3 text-red-500" />
+          <span className="text-[8px] font-bold text-red-600 uppercase tracking-wide">Node Identified — Access Blocked</span>
         </div>
-      </td>
-      <td className="px-3 py-2.5 whitespace-nowrap">
-        <span className="text-[9px] text-gray-600">{ACTION_LABEL[entry.action] ?? entry.action}</span>
-      </td>
-      <td className="px-3 py-2.5 max-w-[240px]">
-        <p className="text-[9px] text-gray-700 truncate font-mono" title={entry.query}>{entry.query}</p>
-      </td>
-      <td className="px-3 py-2.5 whitespace-nowrap">
-        <Badge label={rs.label} bg={rs.bg} text={rs.text} />
-      </td>
-      <td className="px-3 py-2.5 whitespace-nowrap">
-        <span className="text-[9px] text-gray-600">{entry.searchMode}</span>
-      </td>
-      <td className="px-3 py-2.5 text-center">
-        <span className="text-[9px] font-semibold text-gray-700">{entry.sourcesReturned}</span>
-      </td>
-    </motion.tr>
+      )}
+      <div className="px-4 py-2.5 grid gap-3 items-start" style={{ gridTemplateColumns: GRID }}>
+
+        {/* ↑ Upward */}
+        <div className="flex items-start gap-1.5">
+          <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${isBlocked ? "bg-red-100" : "bg-gray-100"}`}>
+            <span className={`text-[9px] ${isBlocked ? "text-red-400" : "text-gray-500"}`}>↑</span>
+          </div>
+          <p className={`text-[9px] leading-relaxed ${isBlocked ? "text-red-700" : "text-gray-600"}`}>{row.upward}</p>
+        </div>
+
+        {/* ◉ Name */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+          <span className={`text-[10.5px] font-semibold truncate ${isBlocked ? "text-red-800" : ""}`}
+            style={{ color: isBlocked ? undefined : "#1D2B4F" }} title={row.name}>
+            {row.name}
+          </span>
+          {isBlocked && <Lock className="w-3 h-3 text-red-400 flex-shrink-0" />}
+        </div>
+
+        {/* ↓ Downstream */}
+        <DownstreamCell activates={row.activatesDownstream} nodes={row.downstreamNodes} blocked={isBlocked} />
+
+        {/* # Trigger Code */}
+        <div>
+          <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded border tracking-wide ${
+            isBlocked ? "border-red-200 bg-red-50 text-red-600" : "border-gray-200 bg-gray-50 text-gray-700"
+          }`}>
+            {row.triggerCode}
+          </span>
+          <p className="text-[7px] text-gray-400 font-mono mt-1">{formatTime(row.timestamp)}</p>
+        </div>
+
+        {/* Comments */}
+        <p className={`text-[9px] leading-relaxed ${isBlocked ? "text-red-700" : "text-gray-600"} ${expanded ? "" : "line-clamp-2"}`}>
+          {row.comments}
+        </p>
+
+        {/* Clearance */}
+        <ClearanceBadge clearance={row.clearance} note={row.clearanceNote} />
+      </div>
+    </motion.div>
   );
 }
 
 export function Frame6PatientSignal({ onNavigate }: Frame6Props) {
   const [entries, setEntries] = useState<readonly LogEntry[]>(() => getLog());
+  const [expanded, setExpanded] = useState<string | null>(null);
 
+  // Reads the shared, cross-portal activity log — unaffected by switching
+  // portal mode, so earlier interactions from any portal stay visible.
   useEffect(() => {
     const unsub = subscribe(() => setEntries([...getLog()]));
     return unsub;
   }, []);
 
-  const reversed = [...entries].reverse();
-
-  const portalsActive = ([...new Set(entries.map(e => e.portalType))] as PortalType[]);
-  const gated = entries.filter(e => e.accessResult.startsWith("gated")).length;
-  const answered = entries.filter(e => e.accessResult.startsWith("answered")).length;
+  const rows = [...entries].reverse().map(toRow);
+  const cleared     = rows.filter(r => r.clearance === "cleared").length;
+  const conditional = rows.filter(r => r.clearance === "conditional").length;
+  const restricted  = rows.filter(r => r.clearance === "restricted").length;
+  const blocked     = rows.filter(r => r.clearance === "prohibited").length;
+  const portalsActive = [...new Set(entries.map(e => e.portalType))] as PortalType[];
 
   return (
     <div className="h-full bg-[#F5F5F7] flex flex-col overflow-hidden">
 
-      {/* Dark header */}
+      {/* System Header */}
       <div className="bg-[#0F1923] px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#830051" }}>
@@ -112,120 +283,88 @@ export function Frame6PatientSignal({ onNavigate }: Frame6Props) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-white text-sm font-semibold tracking-wide">AZBridge · Activity Log</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded font-mono text-white" style={{ backgroundColor: "#830051" }}>
-                LIVE · UNIFIED
-              </span>
+              <span className="text-white text-sm font-semibold tracking-wide">AZ Semantic Nervous System</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#830051] text-white font-mono">UNIFIED BACKBONE LOG</span>
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[9px] text-gray-400 font-mono">{entries.length} events across {portalsActive.length} portal{portalsActive.length !== 1 ? "s" : ""}</span>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="text-[9px] text-gray-400 font-mono">
+                {rows.length} node{rows.length !== 1 ? "s" : ""} traced across {portalsActive.length} portal{portalsActive.length !== 1 ? "s" : ""}
+              </span>
               <span className="text-gray-600">·</span>
-              <motion.span
-                className="text-[9px] text-green-400 font-mono flex items-center gap-1"
-                animate={{ opacity: [1, 0.4, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
+              <motion.span className="text-[9px] text-green-400 font-mono flex items-center gap-1"
+                animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 2, repeat: Infinity }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" /> LIVE
               </motion.span>
-              <span className="text-gray-600">·</span>
-              <span className="text-[9px] text-gray-400">No personal identifiers stored</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Per-portal event counts */}
-          <div className="flex items-center gap-1.5">
-            {portalsActive.map(pt => {
-              const s = PORTAL_STYLE[pt];
-              const n = entries.filter(e => e.portalType === pt).length;
-              return <Badge key={pt} label={`${s.label} ${n}`} bg={s.bg} text={s.text} border={s.border} />;
-            })}
-          </div>
-
-          <div className="w-px h-5 bg-white/10" />
-
-          <button
-            onClick={() => { clearLog(); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] text-red-300 transition-colors"
-            style={{ backgroundColor: "rgba(239,68,68,0.15)" }}
-          >
-            <Trash2 className="w-3 h-3" /> Clear
-          </button>
-        </div>
-      </div>
-
-      {/* Stats strip */}
-      <div className="bg-[#1A2535] px-6 py-2 flex items-center gap-4 flex-shrink-0 flex-wrap border-b border-white/5">
-        <div className="flex items-center gap-1.5">
-          <Shield className="w-3 h-3 text-gray-500" />
-          <span className="text-[9px] text-gray-400">Total events</span>
-          <span className="text-[11px] font-bold text-white">{entries.length}</span>
-        </div>
-        <div className="w-px h-4 bg-white/10" />
-        <div className="flex items-center gap-1.5">
-          <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-900/60 text-red-300">Gated {gated}</span>
-          <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-900/60 text-green-300">Answered {answered}</span>
-        </div>
+        <button
+          onClick={() => clearLog()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] text-red-300 transition-colors flex-shrink-0"
+          style={{ backgroundColor: "rgba(239,68,68,0.15)" }}
+        >
+          <Trash2 className="w-3 h-3" /> Clear
+        </button>
       </div>
 
       {/* Column headers */}
-      <div className="bg-[#1D2B4F] px-3 py-2 flex-shrink-0 border-b border-white/10">
-        <table className="w-full">
-          <thead>
-            <tr>
-              {["#", "Timestamp", "Session", "Portal", "Action", "Query", "Access Result", "Search Mode", "Sources"].map(h => (
-                <th key={h} className="px-3 py-0 text-left text-[8px] font-semibold text-white/40 uppercase tracking-wide whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-        </table>
+      <div className="bg-white border-b border-gray-200 px-4 py-2 grid gap-3 flex-shrink-0" style={{ gridTemplateColumns: GRID }}>
+        {[
+          { icon: "↑", label: "Upward Connection" },
+          { icon: "◉", label: "Node Name" },
+          { icon: "↓", label: "Activates Downstream?" },
+          { icon: "#", label: "Trigger Code" },
+          { icon: "✦", label: "Comments" },
+          { icon: "✓", label: "Compliance Clearance" },
+        ].map(col => (
+          <div key={col.label} className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold" style={{ color: "#830051" }}>{col.icon}</span>
+            <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide">{col.label}</span>
+          </div>
+        ))}
       </div>
 
-      {/* Live log table */}
-      <div className="flex-1 overflow-y-auto bg-white">
-        <AnimatePresence mode="wait">
-          {entries.length === 0 ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-48 text-gray-400"
-            >
-              <Database className="w-8 h-8 mb-3 opacity-20" />
-              <p className="text-sm font-medium">No events yet</p>
-              <p className="text-[10px] mt-1">Interact with any portal to see events appear here in real time</p>
-            </motion.div>
-          ) : (
-            <motion.table key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full text-left border-collapse">
-              <tbody>
-                {reversed.map((entry, i) => (
-                  <LiveRow key={entry.id} entry={entry} index={i} total={entries.length} />
-                ))}
-              </tbody>
-            </motion.table>
-          )}
-        </AnimatePresence>
+      {/* Log rows */}
+      <div className="flex-1 overflow-y-auto">
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+            <Database className="w-8 h-8 mb-3 opacity-20" />
+            <p className="text-sm font-medium">No nodes traced yet</p>
+            <p className="text-[10px] mt-1">Interact with any portal — Open, Student, HCP, or Patient — to populate this log</p>
+          </div>
+        ) : (
+          rows.map(row => (
+            <LogRow
+              key={row.id}
+              row={row}
+              expanded={expanded === row.id}
+              onToggle={() => setExpanded(expanded === row.id ? null : row.id)}
+            />
+          ))
+        )}
       </div>
 
-      {/* Footer nav */}
-      <div className="bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          {portalsActive.map(pt => {
-            const s = PORTAL_STYLE[pt];
-            const n = entries.filter(e => e.portalType === pt).length;
-            return (
-              <div key={pt} className="flex items-center gap-1">
-                <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                <span className={`text-[9px] font-medium ${s.text}`}>{s.label}: {n} events</span>
-              </div>
-            );
-          })}
-          {portalsActive.length === 0 && (
-            <span className="text-[9px] text-gray-400">Waiting for portal interactions…</span>
-          )}
+      {/* Footer */}
+      <div className="bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-[9px] text-gray-500 font-mono">LOG · {rows.length} nodes</span>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-50 border border-green-200">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="text-[9px] text-green-700 font-medium">{cleared} Cleared</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-50 border border-amber-200">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="text-[9px] text-amber-700 font-medium">{conditional} Conditional</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-50 border border-red-200">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <span className="text-[9px] text-red-700 font-medium">{restricted} Restricted</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-100 border border-red-300">
+            <Lock className="w-2.5 h-2.5 text-red-600" />
+            <span className="text-[9px] text-red-700 font-medium">{blocked} Blocked</span>
+          </div>
         </div>
         <button
           onClick={onNavigate}
