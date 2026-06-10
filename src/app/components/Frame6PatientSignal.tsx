@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle, AlertCircle, XCircle, ChevronDown, ChevronRight, Lock, Database, Trash2 } from "lucide-react";
-import { getLog, clearLog, subscribe, LogEntry, PortalType } from "../lib/activityLog";
+import { CheckCircle, AlertCircle, XCircle, ChevronDown, ChevronRight, Lock, Database } from "lucide-react";
+import { getLog, subscribe, LogEntry, PortalType } from "../lib/activityLog";
 
 interface Frame6Props {
   onNavigate: () => void;
@@ -298,14 +298,6 @@ export function Frame6PatientSignal({ onNavigate }: Frame6Props) {
             </div>
           </div>
         </div>
-
-        <button
-          onClick={() => clearLog()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] text-red-300 transition-colors flex-shrink-0"
-          style={{ backgroundColor: "rgba(239,68,68,0.15)" }}
-        >
-          <Trash2 className="w-3 h-3" /> Clear
-        </button>
       </div>
 
       {/* Column headers */}
