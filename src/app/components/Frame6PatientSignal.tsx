@@ -23,11 +23,11 @@ interface RowData {
   timestamp: string;
 }
 
-const PORTAL_META: Record<PortalType, { label: string; color: string }> = {
-  open:    { label: "Open Portal",    color: "#3B82F6" },
-  student: { label: "Student Portal", color: "#14B8A6" },
-  hcp:     { label: "HCP Portal",     color: "#A855F7" },
-  patient: { label: "Patient Portal", color: "#0EA5E9" },
+const PORTAL_META: Record<PortalType, { label: string }> = {
+  open:    { label: "Open Portal" },
+  student: { label: "Student Portal" },
+  hcp:     { label: "HCP Portal" },
+  patient: { label: "Patient Portal" },
 };
 
 const ACTION_LABEL: Record<string, string> = {
@@ -39,6 +39,97 @@ const ACTION_LABEL: Record<string, string> = {
 };
 
 const GRID = "1fr 1.3fr 0.75fr 0.85fr 1.8fr 1.1fr";
+
+// Knowledge-graph nodes that a chat query can activate in the SNS — mirrors
+// the node set traced in Frame3/Frame4's Medical Affairs pathway. The "Node
+// Name" column shows whichever of these the query relates to, not the raw
+// question text.
+interface KGNode {
+  name: string;
+  color: string;
+  keywords: string[];
+  upward: string;
+  downstream: string[];
+}
+
+const KG_NODES: KGNode[] = [
+  {
+    name: "Tagrisso (Osimertinib)",
+    color: "#3B82F6",
+    keywords: ["tagrisso", "osimertinib"],
+    upward: "EGFR Oncology Platform → Precision Medicine Programme",
+    downstream: ["PD-1 Pathway", "DDR Hub", "ADC Combination", "Epigenetics Layer"],
+  },
+  {
+    name: "PD-1 Pathway",
+    color: "#F59E0B",
+    keywords: ["pd-1", "pd1", "pd-l1", "checkpoint inhibitor", "immunotherapy"],
+    upward: "Tagrisso (post-progression context)",
+    downstream: ["Pembrolizumab", "Durvalumab", "Atezolizumab", "Nivolumab", "IO Combination Strategy"],
+  },
+  {
+    name: "Pembrolizumab",
+    color: "#A855F7",
+    keywords: ["pembrolizumab", "pembro", "keytruda"],
+    upward: "PD-1 Pathway (checkpoint inhibitor arm)",
+    downstream: ["IO Combination Strategy"],
+  },
+  {
+    name: "Durvalumab",
+    color: "#EC4899",
+    keywords: ["durvalumab", "durva", "imfinzi"],
+    upward: "PD-1 Pathway (checkpoint inhibitor arm)",
+    downstream: [],
+  },
+  {
+    name: "Atezolizumab",
+    color: "#14B8A6",
+    keywords: ["atezolizumab", "atezo", "tecentriq"],
+    upward: "PD-1 Pathway (checkpoint inhibitor arm)",
+    downstream: [],
+  },
+  {
+    name: "Nivolumab",
+    color: "#F97316",
+    keywords: ["nivolumab", "nivo", "opdivo"],
+    upward: "PD-1 Pathway (checkpoint inhibitor arm)",
+    downstream: ["IO Combination Strategy"],
+  },
+  {
+    name: "DDR Hub",
+    color: "#10B981",
+    keywords: ["ddr", "dna damage", "atm", "atr", "parp", "wee1", "ceralasertib", "synthetic lethality"],
+    upward: "Tagrisso (combination context)",
+    downstream: ["PARP Inhibition", "ATR / ATM", "Biomarker NGS", "Synthetic Lethality"],
+  },
+  {
+    name: "EGFR Mutation Pathway",
+    color: "#06B6D4",
+    keywords: ["egfr", "exon19", "exon 19", "t790m"],
+    upward: "Genomic Biomarker Layer → Precision Oncology",
+    downstream: ["Tagrisso (Osimertinib)"],
+  },
+  {
+    name: "ADC Combination",
+    color: "#EF4444",
+    keywords: ["adc", "antibody-drug conjugate", "payload"],
+    upward: "Tagrisso (novel combination context)",
+    downstream: [],
+  },
+];
+
+const FALLBACK_NODE: KGNode = {
+  name: "General Knowledge Query",
+  color: "#6B7280",
+  keywords: [],
+  upward: "",
+  downstream: [],
+};
+
+function detectNode(query: string): KGNode {
+  const q = query.toLowerCase();
+  return KG_NODES.find((n) => n.keywords.some((k) => q.includes(k))) ?? FALLBACK_NODE;
+}
 
 // Deterministic short trigger code derived from the event id, so the same
 // event always renders the same code without needing to store one.
@@ -56,9 +147,9 @@ function formatTime(iso: string) {
 // "backbone log" row shape (upward connection / node / downstream / trigger / comments / clearance).
 function toRow(entry: LogEntry): RowData {
   const meta = PORTAL_META[entry.portalType];
-  const name = entry.query.length > 80 ? entry.query.slice(0, 80) + "…" : (entry.query || "(no query)");
+  const node = detectNode(entry.query);
+  const lineage = node.upward ? `${node.upward} · via ${meta.label}` : `${meta.label} → Knowledge Graph`;
 
-  let upward: string;
   let comments: string;
   let activatesDownstream = false;
   let downstreamNodes: string[] = [];
@@ -66,14 +157,14 @@ function toRow(entry: LogEntry): RowData {
   let clearanceNote = "—";
 
   if (entry.action === "query_submit") {
-    upward = `${meta.label} → Chat Assistant`;
     comments = `Query received from ${meta.label}: "${entry.query}". Routed to retrieval engine.`;
     clearanceNote = "Pending — search not yet executed";
   } else if (entry.action === "results_shown") {
-    upward = `${meta.label} → Retrieval Engine${entry.searchMode !== "—" ? ` (${entry.searchMode})` : ""}`;
     if (entry.accessResult.startsWith("answered")) {
-      activatesDownstream = entry.sourcesReturned > 0;
-      downstreamNodes = Array.from({ length: entry.sourcesReturned }, (_, i) => `Published Source ${i + 1}`);
+      downstreamNodes = node.downstream.length > 0
+        ? node.downstream
+        : Array.from({ length: entry.sourcesReturned }, (_, i) => `Published Source ${i + 1}`);
+      activatesDownstream = downstreamNodes.length > 0;
       comments = `${entry.searchMode} returned ${entry.sourcesReturned} published source${entry.sourcesReturned === 1 ? "" : "s"} for: "${entry.query}".`;
       clearance = "cleared";
       clearanceNote = `Cleared — ${entry.searchMode} accessible to ${meta.label} tier`;
@@ -89,26 +180,23 @@ function toRow(entry: LogEntry): RowData {
       comments = `Results processed for: "${entry.query}".`;
     }
   } else if (entry.action === "copy_answer") {
-    upward = `${meta.label} → Clipboard`;
     comments = `User copied the synthesised answer for: "${entry.query}".`;
     clearance = "cleared";
     clearanceNote = `Cleared — answer export permitted for ${meta.label} tier`;
   } else if (entry.action === "cta_dismiss") {
-    upward = `${meta.label} → Registration CTA`;
     comments = `Registration prompt dismissed for: "${entry.query}".`;
     clearanceNote = "Conditional — CTA dismissed, no further action";
   } else {
-    upward = `${meta.label} → ${ACTION_LABEL[entry.action] ?? entry.action}`;
-    comments = `Demo query selected: "${entry.query}".`;
+    comments = `${ACTION_LABEL[entry.action] ?? entry.action} for: "${entry.query}".`;
     clearanceNote = "Conditional — query staged, awaiting submission";
   }
 
   return {
     id: entry.id,
     triggerCode: triggerCode(entry.id),
-    upward,
-    name,
-    color: meta.color,
+    upward: lineage,
+    name: node.name,
+    color: node.color,
     activatesDownstream,
     downstreamNodes,
     comments,
