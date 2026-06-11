@@ -15,8 +15,8 @@ interface RowData {
   upward: string;
   name: string;
   color: string;
-  activatesDownstream: boolean;
   downstreamNodes: string[];
+  downstreamBlockedNodes: string[];
   comments: string;
   clearance: Clearance;
   clearanceNote: string;
@@ -50,6 +50,10 @@ interface KGNode {
   keywords: string[];
   upward: string;
   downstream: string[];
+  // Nodes always shown as access-blocked when this node is activated —
+  // mirrors the 3 internal-only nodes blocked for the HCP in Frame5's
+  // DDR knowledge graph (Internal Trial Data, Pipeline Intel, MSL Briefing Deck).
+  downstreamBlocked: string[];
 }
 
 const KG_NODES: KGNode[] = [
@@ -59,6 +63,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["tagrisso", "osimertinib"],
     upward: "EGFR Oncology Platform → Precision Medicine Programme",
     downstream: ["PD-1 Pathway", "DDR Hub", "ADC Combination", "Epigenetics Layer"],
+    downstreamBlocked: [],
   },
   {
     name: "PD-1 Pathway",
@@ -66,6 +71,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["pd-1", "pd1", "pd-l1", "checkpoint inhibitor", "immunotherapy"],
     upward: "Tagrisso (post-progression context)",
     downstream: ["Pembrolizumab", "Durvalumab", "Atezolizumab", "Nivolumab", "IO Combination Strategy"],
+    downstreamBlocked: [],
   },
   {
     name: "Pembrolizumab",
@@ -73,6 +79,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["pembrolizumab", "pembro", "keytruda"],
     upward: "PD-1 Pathway (checkpoint inhibitor arm)",
     downstream: ["IO Combination Strategy"],
+    downstreamBlocked: [],
   },
   {
     name: "Durvalumab",
@@ -80,6 +87,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["durvalumab", "durva", "imfinzi"],
     upward: "PD-1 Pathway (checkpoint inhibitor arm)",
     downstream: [],
+    downstreamBlocked: [],
   },
   {
     name: "Atezolizumab",
@@ -87,6 +95,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["atezolizumab", "atezo", "tecentriq"],
     upward: "PD-1 Pathway (checkpoint inhibitor arm)",
     downstream: [],
+    downstreamBlocked: [],
   },
   {
     name: "Nivolumab",
@@ -94,6 +103,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["nivolumab", "nivo", "opdivo"],
     upward: "PD-1 Pathway (checkpoint inhibitor arm)",
     downstream: ["IO Combination Strategy"],
+    downstreamBlocked: [],
   },
   {
     name: "DDR Hub",
@@ -101,6 +111,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["ddr", "dna damage", "atm", "atr", "parp", "wee1", "ceralasertib", "synthetic lethality"],
     upward: "Tagrisso (combination context)",
     downstream: ["PARP Inhibition", "ATR / ATM", "Biomarker NGS", "Synthetic Lethality"],
+    downstreamBlocked: ["Internal Trial Data", "Pipeline Intel", "MSL Briefing Deck"],
   },
   {
     name: "EGFR Mutation Pathway",
@@ -108,6 +119,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["egfr", "exon19", "exon 19", "t790m"],
     upward: "Genomic Biomarker Layer → Precision Oncology",
     downstream: ["Tagrisso (Osimertinib)"],
+    downstreamBlocked: [],
   },
   {
     name: "ADC Combination",
@@ -115,6 +127,7 @@ const KG_NODES: KGNode[] = [
     keywords: ["adc", "antibody-drug conjugate", "payload"],
     upward: "Tagrisso (novel combination context)",
     downstream: [],
+    downstreamBlocked: [],
   },
 ];
 
@@ -124,6 +137,7 @@ const FALLBACK_NODE: KGNode = {
   keywords: [],
   upward: "",
   downstream: [],
+  downstreamBlocked: [],
 };
 
 function detectNode(query: string): KGNode {
@@ -151,8 +165,8 @@ function toRow(entry: LogEntry): RowData {
   const lineage = node.upward ? `${node.upward} · via ${meta.label}` : `${meta.label} → Knowledge Graph`;
 
   let comments: string;
-  let activatesDownstream = false;
   let downstreamNodes: string[] = [];
+  let downstreamBlockedNodes: string[] = [];
   let clearance: Clearance = "conditional";
   let clearanceNote = "—";
 
@@ -164,11 +178,12 @@ function toRow(entry: LogEntry): RowData {
       downstreamNodes = node.downstream.length > 0
         ? node.downstream
         : Array.from({ length: entry.sourcesReturned }, (_, i) => `Published Source ${i + 1}`);
-      activatesDownstream = downstreamNodes.length > 0;
+      downstreamBlockedNodes = node.downstreamBlocked;
       comments = `${entry.searchMode} returned ${entry.sourcesReturned} published source${entry.sourcesReturned === 1 ? "" : "s"} for: "${entry.query}".`;
       clearance = "cleared";
       clearanceNote = `Cleared — ${entry.searchMode} accessible to ${meta.label} tier`;
     } else if (entry.accessResult === "gated_registration_required") {
+      downstreamBlockedNodes = node.downstream.length > 0 ? node.downstream : node.downstreamBlocked;
       comments = `Access gate triggered for: "${entry.query}". Registration required — results withheld from requester.`;
       clearance = "prohibited";
       clearanceNote = `ACCESS BLOCKED — registration required for ${meta.label} requester`;
@@ -197,8 +212,8 @@ function toRow(entry: LogEntry): RowData {
     upward: lineage,
     name: node.name,
     color: node.color,
-    activatesDownstream,
     downstreamNodes,
+    downstreamBlockedNodes,
     comments,
     clearance,
     clearanceNote,
@@ -235,17 +250,11 @@ function ClearanceBadge({ clearance, note }: { clearance: Clearance; note: strin
   );
 }
 
-function DownstreamCell({ activates, nodes, blocked }: { activates: boolean; nodes: string[]; blocked?: boolean }) {
+function DownstreamCell({ activeNodes, blockedNodes }: { activeNodes: string[]; blockedNodes: string[] }) {
   const [open, setOpen] = useState(false);
-  if (blocked) {
-    return (
-      <div className="flex items-center gap-1">
-        <Lock className="w-3.5 h-3.5 text-red-400" />
-        <span className="text-[9px] text-red-400">Blocked</span>
-      </div>
-    );
-  }
-  if (!activates) {
+  const total = activeNodes.length + blockedNodes.length;
+
+  if (total === 0) {
     return (
       <div className="flex items-center gap-1">
         <XCircle className="w-3.5 h-3.5 text-gray-400" />
@@ -253,21 +262,37 @@ function DownstreamCell({ activates, nodes, blocked }: { activates: boolean; nod
       </div>
     );
   }
+
+  const SummaryIcon = activeNodes.length > 0 ? CheckCircle : Lock;
+  const summaryColor = activeNodes.length > 0 ? "text-green-700" : "text-red-500";
+  const summaryIconColor = activeNodes.length > 0 ? "text-green-600" : "text-red-400";
+
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-green-700">
-        <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-        <span className="text-[9px] font-medium">Yes — {nodes.length} node{nodes.length > 1 ? "s" : ""}</span>
+      <button onClick={() => setOpen(o => !o)} className={`flex items-center gap-1 ${summaryColor}`}>
+        <SummaryIcon className={`w-3.5 h-3.5 ${summaryIconColor}`} />
+        <span className="text-[9px] font-medium">
+          {activeNodes.length > 0
+            ? `Yes — ${activeNodes.length} node${activeNodes.length > 1 ? "s" : ""}`
+            : "Blocked"}
+          {blockedNodes.length > 0 ? ` · ${blockedNodes.length} blocked` : ""}
+        </span>
         {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
       </button>
       <AnimatePresence>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-1 space-y-0.5">
-            {nodes.map(n => (
+            {activeNodes.map(n => (
               <div key={n} className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 <span className="text-[8px] text-green-800">{n}</span>
+              </div>
+            ))}
+            {blockedNodes.map(n => (
+              <div key={n} className="flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5 text-red-400 flex-shrink-0" />
+                <span className="text-[8px] text-red-500">{n}</span>
               </div>
             ))}
           </motion.div>
@@ -318,7 +343,7 @@ function LogRow({ row, expanded, onToggle }: { row: RowData; expanded: boolean; 
         </div>
 
         {/* ↓ Downstream */}
-        <DownstreamCell activates={row.activatesDownstream} nodes={row.downstreamNodes} blocked={isBlocked} />
+        <DownstreamCell activeNodes={row.downstreamNodes} blockedNodes={row.downstreamBlockedNodes} />
 
         {/* # Trigger Code */}
         <div>
